@@ -11,13 +11,13 @@ module regfile(input clk,
 
   // compiler puts return value in r3
   // expose it here to allow for testing
-  assign ret_val = regfile[3'b011];
+  assign ret_val = regfile[5'd3];
 
   always @(posedge clk) begin
     if (wen0) begin
         regfile[waddr0] <= wdata0;
     end
-    if (wen1) begin
+    if (wen1 && waddr0 != waddr1) begin // load data takes precedence over address
         // 2nd write port used for pre/post increment memory operations
         regfile[waddr1] <= wdata1;
     end

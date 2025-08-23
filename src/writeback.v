@@ -1,24 +1,44 @@
 `timescale 1ps/1ps
 
 module writeback(input clk, input halt, input bubble_in, 
-    input [2:0]tgt_in, input [2:0]opcode_in, input [15:0]alu_result, input [15:0]mem_result,
-    output [15:0]result_out,
-    output we, output reg [2:0]wb_tgt_out, output reg [15:0]wb_result_out
+    input [4:0]tgt_in_1, input [4:0]tgt_in_2, input is_load, input is_store,
+    
+    input [4:0]opcode, 
+    input [31:0]alu_result_1, input [31:0]alu_result_2, input [31:0]mem_result, 
+
+    output [31:0]result_out_1,
+    output [31:0]result_out_2,
+    
+    output we1, output reg [4:0]wb_tgt_out_1, output reg [31:0]wb_result_out_1,
+    output we2, output reg [4:0]wb_tgt_out_2, output reg [31:0]wb_result_out_2
   );
 
   initial begin
-    wb_tgt_out = 3'b000;
+    wb_tgt_out_1 = 5'd0;
+    wb_tgt_out_2 = 5'd0;
   end
+
+  // todo: combine results for misaligned memory
 
   always @(posedge clk) begin
     if (~halt) begin
-      wb_tgt_out <= tgt_in;
-      wb_result_out <= result_out;
+      wb_tgt_out_1 <= tgt_in_1;
+      wb_tgt_out_2 <= tgt_in_2;
+      wb_result_out_1 <= result_out_1;
+      wb_result_out_2 <= result_out_2;
     end
   end
 
-  // sw and branches don't write to register file, everything else does
-  assign we = (tgt_in != 0) && (opcode_in != 3'b100 && opcode_in != 3'b110) && !bubble_in;
-  assign result_out = (opcode_in == 3'b101) ? mem_result : alu_result;
+  wire [31:0]masked_mem_result = 
+    (5'd3 <= opcode && opcode <= 5'd5) ? mem_result :
+    (5'd6 <= opcode && opcode <= 5'd8) ? mem_result & 32'hffff :
+    (5'd9 <= opcode && opcode <= 5'd11) ? mem_result & 32'hff :
+    32'h0;
+
+  // stores and immediate branches don't write to register file, everything else does
+  assign we1 = (tgt_in_1 != 0) && (!is_store && opcode != 5'd12) && !bubble_in;
+  assign we2 = (tgt_in_2 != 0) && (!is_store && opcode != 5'd12) && !bubble_in;
+  assign result_out_1 = is_load ? masked_mem_result : alu_result_1;
+  assign result_out_2 = alu_result_2;
 
 endmodule

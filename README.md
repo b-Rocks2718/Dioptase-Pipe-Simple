@@ -2,6 +2,17 @@
 
 Pipeline implementation of [Dioptase-Emulator-Simple](https://github.com/b-Rocks2718/Dioptase-Emulator-Simple)
 
+6 stage pipeline
+
+- fetch a
+- fetch b
+- decode
+- execute
+- mem
+- writeback
+
+Memory stage path length limited JPEB to 50Mhz, running Dioptase at 100MHz would be nice
+
 ## Usage
 
 
