@@ -7,7 +7,7 @@ module counter(input isHalt, input clk, input [31:0]ret_val);
     always @(posedge clk) begin
         if (isHalt) begin
             // $fdisplay(32'h8000_0002,"%d\n",count);
-            $display("Finished with << %0d >>", ret_val);
+            $display("%0d", ret_val);
             $finish;
         end
         if (count == 500) begin

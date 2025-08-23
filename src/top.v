@@ -5,10 +5,12 @@ module jpeb();
     reg reset = 0;
     wire clk;
 
-    initial begin
+    `ifdef DUMP
+      initial begin
         $dumpfile("cpu.vcd");
         $dumpvars(0, jpeb);
-    end
+      end
+    `endif
 
     clock c0(clk);
 

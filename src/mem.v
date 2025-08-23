@@ -9,10 +9,16 @@ module mem(input clk,
     // limited memory address range for now
     reg [31:0]ram[0:16'hffff];
 
+    reg [1023:0] hexfile; // buffer for filename
+
     initial begin
-      // load program + data
-      $readmemh("./tests/hex/add.hex", ram);
+        if (!$value$plusargs("hex=%s", hexfile)) begin
+            $display("ERROR: no +hex=<file> argument given!");
+            $finish;
+        end
+        $readmemh(hexfile, ram);  // mem is your instruction/data memory
     end
+
 
     reg wen_buf;
 
