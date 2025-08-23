@@ -65,7 +65,7 @@ module decode(input clk,
 
   // some instructions don't read from r_b
   wire [4:0]s_1 = (opcode == 5'd2 || opcode == 5'd5 || opcode == 5'd8
-                || opcode == 5'd11 || opcode == 5'd12 || opcode == 5'd14 ||
+                || opcode == 5'd11 || opcode == 5'd12 || opcode == 5'd15 ||
                 ((opcode == 5'd0 || opcode == 5'd1) && alu_op == 5'd6)) ? 5'd0 : r_b;
   
   // store instructions read from r_a instead of writing there
@@ -83,6 +83,7 @@ module decode(input clk,
     (opcode == 5'd1 && is_bitwise) ? { 24'b0, instr_in[7:0] } << alu_shift : // zero extend, then shift
     (opcode == 5'd1 && is_shift) ? { 27'b0, instr_in[4:0] } : // zero extend 5 bit
     (opcode == 5'd1 && is_arithmetic) ? { {20{instr_in[11]}}, instr_in[11:0] } : // sign extend 12 bit
+    (opcode == 5'd2) ? {instr_in[21:0], 10'b0} : // shift left 
     opcode == 5'd12 ? { {10{instr_in[21]}}, instr_in[21:0] } : // sign extend 22 bit
     is_absolute_mem ? { {20{instr_in[11]}}, instr_in[11:0] } << mem_shift : // sign extend 12 bit with shift
     (opcode == 5'd4 || opcode == 5'd7 || opcode == 5'd10) ? { {16{instr_in[15]}}, instr_in[15:0] } : // sign extend 16 bit 

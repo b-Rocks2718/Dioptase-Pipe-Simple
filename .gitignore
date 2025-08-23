@@ -2,3 +2,5 @@
 *.emuout
 *.vout
 *.hex
+*.vcd
+*.vvp

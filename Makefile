@@ -1,50 +1,95 @@
-# Paths
-SRC_DIR := src
-ASM_DIR := tests/asm
-HEX_DIR := tests/hex
-TOP     := $(SRC_DIR)/top.v
+# Directories
+CPU_TESTS_DIR    := tests/asm
+EMU_TESTS_DIR    := ../../Dioptase-Emulators/Dioptase-Emulator-Simple/tests/asm
+SRC_DIR      		 := src
+HEX_DIR					 := tests/hex
+OUT_DIR      		 := tests/out
 
-ASSEMBLER := ../../Dioptase-Assembler/build/assembler
-EMULATOR  := ../../Dioptase-Emulators/Dioptase-Emulator-Simple/target/release/Dioptase-Emulator-Simple
-IVERILOG  := iverilog
-VVP       := vvp
+# Tools
+ASSEMBLER    := ../../Dioptase-Assembler/build/assembler
+EMULATOR     := ../../Dioptase-Emulators/Dioptase-Emulator-Simple/target/release/Dioptase-Emulator-Simple
+IVERILOG     := iverilog
+VVP          := vvp
 
-# Collect all .asm files
-ASM_SRCS := $(wildcard $(ASM_DIR)/*.s)
-HEX_FILES := $(patsubst $(ASM_DIR)/%.s,$(HEX_DIR)/%.hex,$(ASM_SRCS))
-VERILOG_SRCS := $(wildcard $(SRC_DIR)/*.v)
+# All test sources
+VERILOG_SRCS   := $(wildcard $(SRC_DIR)/*.v)
 
-.PRECIOUS: tests/hex/%.hex 
-.PRECIOUS: %.emuout %.vout
+CPU_TESTS_SRCS   := $(wildcard $(CPU_TESTS_DIR)/*.s)
+EMU_TESTS_SRCS   := $(wildcard $(EMU_TESTS_DIR)/*.s)
+ASM_SRCS         := $(CPU_TESTS_SRCS) $(EMU_TESTS_SRCS)
 
-# Default target
-all: test
+HEXES        := $(patsubst %.s,$(HEX_DIR)/%.hex,$(notdir $(ASM_SRCS)))
+EMUOUTS      := $(patsubst %.hex,$(OUT_DIR)/%.emuout,$(notdir $(HEXES)))
+VOUTS        := $(patsubst %.hex,$(OUT_DIR)/%.vout,$(notdir $(HEXES)))
 
-# Assemble .asm -> .hex
-$(HEX_DIR)/%.hex: $(ASM_DIR)/%.s | $(HEX_DIR)
-	@$(ASSEMBLER) $< -o $@ -nostart
+TOTAL            := $(words $(ASM_SRCS))
 
-$(HEX_DIR):
-	mkdir -p $@
+.PRECIOUS: %.hex %.vout %.emuout
 
-# Run emulator on a hex file
-%.emuout: %.hex
+# Ensure OUT_DIR exists
+dirs:
+	@mkdir -p $(OUT_DIR)
+
+# Rules to produce .hex files in HEX_DIR
+$(HEX_DIR)/%.hex: $(CPU_TESTS_DIR)/%.s $(ASSEMBLER) | dirs
+	@$(ASSEMBLER) $< -o $@
+
+$(HEX_DIR)/%.hex: $(EMU_TESTS_DIR)/%.s $(ASSEMBLER) | dirs
+	@./assembler $< -o $@ || true
+
+# Run Verilog simulator (vvp) -> .vout
+$(OUT_DIR)/%.vout: $(HEX_DIR)/%.hex sim.vvp | dirs
+	@$(VVP) sim.vvp +hex=$< > $@
+
+# Run Emulator -> .emuout
+$(OUT_DIR)/%.emuout: $(HEX_DIR)/%.hex $(EMULATOR) | dirs
 	@$(EMULATOR) $< > $@
 
-# Run Verilog simulation on a hex file
-%.vout: %.hex $(VERILOG_SRCS)
-	@$(IVERILOG) -o sim.out $(VERILOG_SRCS)
-	@$(VVP) sim.out +hex=$< > $@
+# Compile Verilog into sim.vvp once
+sim.vvp: $(wildcard $(SRC_DIR)/*.v)
+	@$(IVERILOG) -o sim.vvp $^
 
-# Compare emulator vs Verilog results
-%.check: %.emuout %.vout
-	@echo "Checking $*..."
-	@diff -u $*.emuout $*.vout && echo "PASS: $*" || (echo "FAIL: $*"; exit 1)
+# Main test target
+test: $(ASM_SRCS) $(VERILOG_SRCS) sim.vvp | dirs
+	@GREEN="\033[0;32m"; \
+	RED="\033[0;31m"; \
+	YELLOW="\033[0;33m"; \
+	NC="\033[0m"; \
+	passed=0; total=$(TOTAL); \
+	echo "Running $(words $(EMU_TESTS_SRCS)) emulator tests:"; \
+	for t in $(basename $(notdir $(EMU_TESTS_SRCS))); do \
+	  printf "%s %-20s " '-' "$$t"; \
+	  $(ASSEMBLER) $(EMU_TESTS_DIR)/$$t.s -o $(HEX_DIR)/$$t.hex && \
+	  $(EMULATOR) $(HEX_DIR)/$$t.hex > $(OUT_DIR)/$$t.emuout && \
+	  $(VVP) sim.vvp +hex=$(HEX_DIR)/$$t.hex > $(OUT_DIR)/$$t.vout 2>/dev/null; \
+	  if cmp --silent $(OUT_DIR)/$$t.emuout $(OUT_DIR)/$$t.vout; then \
+	    echo "$$GREEN PASS $$NC"; passed=$$((passed+1)); \
+	  else \
+	    echo "$$RED FAIL $$NC"; \
+	  fi; \
+	done; \
+	echo; \
+	echo "Running $(words $(CPU_TESTS_SRCS)) pipeline tests:"; \
+	for t in $(basename $(notdir $(CPU_TESTS_SRCS))); do \
+	  printf "%s %-20s " '-' "$$t"; \
+	  $(ASSEMBLER) $(CPU_TESTS_DIR)/$$t.s -o $(HEX_DIR)/$$t.hex -nostart && \
+	  $(EMULATOR) $(HEX_DIR)/$$t.hex > $(OUT_DIR)/$$t.emuout && \
+	  $(VVP) sim.vvp +hex=$(HEX_DIR)/$$t.hex > $(OUT_DIR)/$$t.vout 2>/dev/null; \
+	  if cmp --silent $(OUT_DIR)/$$t.emuout $(OUT_DIR)/$$t.vout; then \
+	    echo "$$GREEN PASS $$NC"; passed=$$((passed+1)); \
+	  else \
+	    echo "$$RED FAIL $$NC"; \
+	  fi; \
+	done; \
+	echo; \
+	echo "Summary: $$passed / $$total tests passed."
 
-# Run all tests
-test: $(HEX_FILES:.hex=.check)
+.PHONY: test dirs clean
 
 clean:
-	rm -f sim.out $(HEX_DIR)/*.hex $(HEX_DIR)/*.emuout $(HEX_DIR)/*.vout $(HEX_DIR)/*.check
+	rm -f $(OUT_DIR)/*
+	rm -f $(HEX_DIR)/*
+	rm -f sim.vvp
+	
 
-.PHONY: all test clean
+.SECONDARY:
