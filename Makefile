@@ -26,36 +26,37 @@ TOTAL            := $(words $(ASM_SRCS))
 
 .PRECIOUS: %.hex %.vout %.emuout
 
+# Compile Verilog into sim.vvp once
+sim.vvp: $(wildcard $(SRC_DIR)/*.v)
+	$(IVERILOG) -o sim.vvp $^ -DDUMP
+
 # Ensure OUT_DIR exists
 dirs:
-	@mkdir -p $(OUT_DIR)
+	mkdir -p $(OUT_DIR)
 
 # Rules to produce .hex files in HEX_DIR
 $(HEX_DIR)/%.hex: $(CPU_TESTS_DIR)/%.s $(ASSEMBLER) | dirs
-	@$(ASSEMBLER) $< -o $@
+	$(ASSEMBLER) $< -o $@
 
 $(HEX_DIR)/%.hex: $(EMU_TESTS_DIR)/%.s $(ASSEMBLER) | dirs
-	@./assembler $< -o $@ || true
+	./assembler $< -o $@ || true
 
 # Run Verilog simulator (vvp) -> .vout
 $(OUT_DIR)/%.vout: $(HEX_DIR)/%.hex sim.vvp | dirs
-	@$(VVP) sim.vvp +hex=$< > $@
+	$(VVP) sim.vvp +hex=$< > $@
 
 # Run Emulator -> .emuout
 $(OUT_DIR)/%.emuout: $(HEX_DIR)/%.hex $(EMULATOR) | dirs
-	@$(EMULATOR) $< > $@
-
-# Compile Verilog into sim.vvp once
-sim.vvp: $(wildcard $(SRC_DIR)/*.v)
-	@$(IVERILOG) -o sim.vvp $^
+	$(EMULATOR) $< > $@
 
 # Main test target
-test: $(ASM_SRCS) $(VERILOG_SRCS) sim.vvp | dirs
+test: $(ASM_SRCS) $(VERILOG_SRCS) | dirs
 	@GREEN="\033[0;32m"; \
 	RED="\033[0;31m"; \
 	YELLOW="\033[0;33m"; \
 	NC="\033[0m"; \
 	passed=0; total=$(TOTAL); \
+	$(IVERILOG) -o sim.vvp $(wildcard $(SRC_DIR)/*.v) ; \
 	echo "Running $(words $(EMU_TESTS_SRCS)) emulator tests:"; \
 	for t in $(basename $(notdir $(EMU_TESTS_SRCS))); do \
 	  printf "%s %-20s " '-' "$$t"; \
@@ -84,12 +85,12 @@ test: $(ASM_SRCS) $(VERILOG_SRCS) sim.vvp | dirs
 	echo; \
 	echo "Summary: $$passed / $$total tests passed."
 
-.PHONY: test dirs clean
+.PHONY: test dirs clean sim.vvp
 
 clean:
 	rm -f $(OUT_DIR)/*
 	rm -f $(HEX_DIR)/*
 	rm -f sim.vvp
-	
+
 
 .SECONDARY:
