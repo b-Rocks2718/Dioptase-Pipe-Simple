@@ -14,7 +14,7 @@ module ALU(input clk,
   wire [32:0]sum;
   assign sum = {1'b0, s_1} + {1'b0, s_2};
   wire [32:0]carry_sum;
-  assign carry_sum = {1'b0, s_1} + {1'b1, s_2} + {32'b0, flags[0]};
+  assign carry_sum = {1'b0, s_1} + {1'b0, s_2} + {32'b0, flags[0]};
 
   wire [31:0]s_1_sub;
   assign s_1_sub = 32'b1 + (~s_1);
@@ -26,8 +26,6 @@ module ALU(input clk,
   wire [32:0]carry_diff;
   assign carry_diff = {1'b0, s_2} + {1'b0, s_1_subb};
 
-  wire [31:0]shifted = s_1 >> s_2;
-
   assign result = (op == 5'd0 || op == 5'd1) ? (
       (alu_op == 5'd0) ? (s_1 & s_2) : // and
       (alu_op == 5'd1) ? (~(s_1 & s_2)) : // nand
@@ -38,11 +36,11 @@ module ALU(input clk,
       (alu_op == 5'd6) ? (~s_2) : // not
       (alu_op == 5'd7) ? (s_1 << s_2) : // lsl
       (alu_op == 5'd8) ? (s_1 >> s_2) : // lsr
-      (alu_op == 5'd9) ? ({s_1[31], shifted[30:0]}) : // asr
+      (alu_op == 5'd9) ? ({{32{ s_1[31] }}, s_1} >> s_2) : // asr
       (alu_op == 5'd10) ? ((s_1 << s_2) | (s_1 >> (32 - s_2))) : // rotl
       (alu_op == 5'd11) ? ((s_1 >> s_2) | (s_1 << (32 - s_2))) : // rotr
-      (alu_op == 5'd12) ? ((s_1 << s_2) | (flags[0] >> (32 - s_2)) | (s_1 >> (33 - s_2))) : // lslc 
-      (alu_op == 5'd13) ? ((s_1 >> s_2) | (flags[0] << (32 - s_2)) | (s_1 << (33 - s_2))) : // lsrc
+      (alu_op == 5'd12) ? ((s_1 << s_2) | ({flags[0], 31'b0} >> (32 - s_2)) | (s_1 >> (33 - s_2))) : // lslc 
+      (alu_op == 5'd13) ? ((s_1 >> s_2) | ({31'b0, flags[0]} << (32 - s_2)) | (s_1 << (33 - s_2))) : // lsrc
       (alu_op == 5'd14) ? sum[31:0] : // add
       (alu_op == 5'd15) ? carry_sum[31:0] : // addc
       (alu_op == 5'd16) ? diff[31:0]  : // sub

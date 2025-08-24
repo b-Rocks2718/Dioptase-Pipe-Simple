@@ -21,25 +21,29 @@ ASM_SRCS         := $(CPU_TESTS_SRCS) $(EMU_TESTS_SRCS)
 HEXES        := $(patsubst %.s,$(HEX_DIR)/%.hex,$(notdir $(ASM_SRCS)))
 EMUOUTS      := $(patsubst %.hex,$(OUT_DIR)/%.emuout,$(notdir $(HEXES)))
 VOUTS        := $(patsubst %.hex,$(OUT_DIR)/%.vout,$(notdir $(HEXES)))
+VCDS 				 := $(patsubst %.hex,$(OUT_DIR)/%.vcd,$(notdir $(HEXES)))
 
 TOTAL            := $(words $(ASM_SRCS))
 
-.PRECIOUS: %.hex %.vout %.emuout
+.PRECIOUS: %.hex %.vout %.emuout %.vcd
 
 # Compile Verilog into sim.vvp once
 sim.vvp: $(wildcard $(SRC_DIR)/*.v)
-	$(IVERILOG) -o sim.vvp $^ -DDUMP
+	$(IVERILOG) -o sim.vvp $^
+
+$(OUT_DIR)/%.vcd: $(HEX_DIR)/%.hex sim.vvp | dirs
+	$(VVP) sim.vvp +hex=$< +vcd=$@
 
 # Ensure OUT_DIR exists
 dirs:
-	mkdir -p $(OUT_DIR)
+	@mkdir -p $(OUT_DIR)
 
 # Rules to produce .hex files in HEX_DIR
 $(HEX_DIR)/%.hex: $(CPU_TESTS_DIR)/%.s $(ASSEMBLER) | dirs
 	$(ASSEMBLER) $< -o $@
 
 $(HEX_DIR)/%.hex: $(EMU_TESTS_DIR)/%.s $(ASSEMBLER) | dirs
-	./assembler $< -o $@ || true
+	$(ASSEMBLER) $< -o $@ || true
 
 # Run Verilog simulator (vvp) -> .vout
 $(OUT_DIR)/%.vout: $(HEX_DIR)/%.hex sim.vvp | dirs
@@ -62,7 +66,8 @@ test: $(ASM_SRCS) $(VERILOG_SRCS) | dirs
 	  printf "%s %-20s " '-' "$$t"; \
 	  $(ASSEMBLER) $(EMU_TESTS_DIR)/$$t.s -o $(HEX_DIR)/$$t.hex && \
 	  $(EMULATOR) $(HEX_DIR)/$$t.hex > $(OUT_DIR)/$$t.emuout && \
-	  $(VVP) sim.vvp +hex=$(HEX_DIR)/$$t.hex > $(OUT_DIR)/$$t.vout 2>/dev/null; \
+	  $(VVP) sim.vvp +hex=$(HEX_DIR)/$$t.hex +vcd=$(OUT_DIR)/$$t.vcd 2>/dev/null \
+  		| grep -v "VCD info:" > $(OUT_DIR)/$$t.vout ; \
 	  if cmp --silent $(OUT_DIR)/$$t.emuout $(OUT_DIR)/$$t.vout; then \
 	    echo "$$GREEN PASS $$NC"; passed=$$((passed+1)); \
 	  else \
@@ -75,7 +80,8 @@ test: $(ASM_SRCS) $(VERILOG_SRCS) | dirs
 	  printf "%s %-20s " '-' "$$t"; \
 	  $(ASSEMBLER) $(CPU_TESTS_DIR)/$$t.s -o $(HEX_DIR)/$$t.hex -nostart && \
 	  $(EMULATOR) $(HEX_DIR)/$$t.hex > $(OUT_DIR)/$$t.emuout && \
-	  $(VVP) sim.vvp +hex=$(HEX_DIR)/$$t.hex > $(OUT_DIR)/$$t.vout 2>/dev/null; \
+	  $(VVP) sim.vvp +hex=$(HEX_DIR)/$$t.hex +vcd=$(OUT_DIR)/$$t.vcd 2>/dev/null \
+  		| grep -v "VCD info:" > $(OUT_DIR)/$$t.vout ; \
 	  if cmp --silent $(OUT_DIR)/$$t.emuout $(OUT_DIR)/$$t.vout; then \
 	    echo "$$GREEN PASS $$NC"; passed=$$((passed+1)); \
 	  else \
@@ -85,7 +91,7 @@ test: $(ASM_SRCS) $(VERILOG_SRCS) | dirs
 	echo; \
 	echo "Summary: $$passed / $$total tests passed."
 
-.PHONY: test dirs clean sim.vvp
+.PHONY: test dirs clean
 
 clean:
 	rm -f $(OUT_DIR)/*

@@ -19,3 +19,5 @@ Use `make sim.vvp` to build the project.
 Run it on a hex file with `./sim.vvp +hex=<file.hex>`
 
 Run the tests with `make all`.
+
+The test suite consists of all tests used for verifying the emulator, in addition pipeline-specific tests to ensure forwarding and stalls are handled correctly.

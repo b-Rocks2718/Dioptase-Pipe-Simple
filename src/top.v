@@ -5,12 +5,15 @@ module jpeb();
     reg reset = 0;
     wire clk;
 
-    `ifdef DUMP
-      initial begin
+    reg [1023:0] vcdfile;
+    initial begin
+      if ($value$plusargs("vcd=%s", vcdfile)) begin
+        $dumpfile(vcdfile);
+      end else begin
         $dumpfile("cpu.vcd");
-        $dumpvars(0, jpeb);
       end
-    `endif
+      $dumpvars(0, jpeb);
+    end
 
     clock c0(clk);
 

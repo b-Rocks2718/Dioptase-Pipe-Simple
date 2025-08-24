@@ -10,8 +10,8 @@ module execute(input clk, input halt,
     
     input [31:0]reg_out_1, input [31:0]reg_out_2,
 
-    input [31:0]mem_result_out_1, input [31:0]wb_result_out_1, 
-    input [31:0]mem_result_out_2, input [31:0]wb_result_out_2, 
+    input [31:0]mem_result_out_1, input [31:0]mem_result_out_2,
+    input [31:0]wb_result_out_1, input [31:0]wb_result_out_2, 
     
     input [31:0]decode_pc_out, input halt_in,
     input [4:0]mem_opcode_out,
