@@ -1,13 +1,4 @@
-  call main
-  add r3, r0, 2
-  sys EXIT
-  sys EXIT
-  sys EXIT
-  sys EXIT
-  sys EXIT
-  sys EXIT
-  sys EXIT
-  sys EXIT
-main:
-  add r3, r0, 1
+  mov r2, r0
+  movi r3, 0x100
+  lwa  r2, [r3, 4]!
   sys EXIT

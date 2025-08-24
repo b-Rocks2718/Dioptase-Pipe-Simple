@@ -77,7 +77,7 @@ module decode(input clk,
         s_2, d_2,
         we1, target_1, write_data_1,
         we2, target_2, write_data_2,
-        ret_val);
+        stall, ret_val);
 
   wire [31:0]imm = 
     (opcode == 5'd1 && is_bitwise) ? { 24'b0, instr_in[7:0] } << alu_shift : // zero extend, then shift

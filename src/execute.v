@@ -20,7 +20,7 @@ module execute(input clk, input halt,
     input is_post_inc,
     
     output reg [31:0]result_1, output reg [31:0]result_2,
-    output [31:0]addr, output [31:0]store_data, output we,
+    output [31:0]addr, output [31:0]store_data, output we, output reg [31:0]addr_out,
     output reg [4:0]opcode_out, output reg [4:0]tgt_out_1, output reg [4:0]tgt_out_2,
     
     output reg bubble_out,
@@ -38,7 +38,20 @@ module execute(input clk, input halt,
     bubble_out = 1;
     tgt_out_1 = 5'd0;
     tgt_out_2 = 5'd0;
+    reg_tgt_buf_a_1 = 5'd0;
+    reg_tgt_buf_a_2 = 5'd0;
+    reg_tgt_buf_b_1 = 5'd0;
+    reg_tgt_buf_b_2 = 5'd0;
   end
+
+  reg [4:0]reg_tgt_buf_a_1;
+  reg [4:0]reg_tgt_buf_a_2;
+  reg [4:0]reg_tgt_buf_b_1;
+  reg [4:0]reg_tgt_buf_b_2;
+  reg [31:0]reg_data_buf_a_1;
+  reg [31:0]reg_data_buf_a_2;
+  reg [31:0]reg_data_buf_b_1;
+  reg [31:0]reg_data_buf_b_2;
 
   wire [31:0]op1;
   wire [31:0]op2;
@@ -50,6 +63,10 @@ module execute(input clk, input halt,
     (mem_tgt_2 == s_1 && s_1 != 5'b0) ? mem_result_out_2 : 
     (wb_tgt_1 == s_1 && s_1 != 5'b0) ? wb_result_out_1 :
     (wb_tgt_2 == s_1 && s_1 != 5'b0) ? wb_result_out_2 :
+    (reg_tgt_buf_a_1 == s_1 && s_1 != 5'b0) ? reg_data_buf_a_1 :
+    (reg_tgt_buf_a_2 == s_1 && s_1 != 5'b0) ? reg_data_buf_a_2 :
+    (reg_tgt_buf_b_1 == s_1 && s_1 != 5'b0) ? reg_data_buf_b_1 :
+    (reg_tgt_buf_b_2 == s_1 && s_1 != 5'b0) ? reg_data_buf_b_2 :
     reg_out_1;
 
   assign op2 = 
@@ -59,6 +76,10 @@ module execute(input clk, input halt,
     (mem_tgt_2 == s_2 && s_2 != 5'b0) ? mem_result_out_2 : 
     (wb_tgt_1 == s_2 && s_2 != 5'b0) ? wb_result_out_1 :
     (wb_tgt_2 == s_2 && s_2 != 5'b0) ? wb_result_out_2 :
+    (reg_tgt_buf_a_1 == s_2 && s_2 != 5'b0) ? reg_data_buf_a_1 :
+    (reg_tgt_buf_a_2 == s_2 && s_2 != 5'b0) ? reg_data_buf_a_2 :
+    (reg_tgt_buf_b_1 == s_2 && s_2 != 5'b0) ? reg_data_buf_b_1 :
+    (reg_tgt_buf_b_2 == s_2 && s_2 != 5'b0) ? reg_data_buf_b_2 :
     reg_out_2;
 
   assign stall = 
@@ -110,8 +131,19 @@ module execute(input clk, input halt,
       bubble_out <= (halt_in_wb || stall) ? 1 : bubble_in;
       halt_out <= halt_in && !bubble_in;
 
+      addr_out <= addr;
+
       is_load_out <= is_load;
       is_store_out <= is_store;
+
+      reg_tgt_buf_a_1 <= stall ? wb_tgt_1 : 0;
+      reg_tgt_buf_a_2 <= stall ? wb_tgt_2 : 0;
+      reg_data_buf_a_1 <= wb_result_out_1;
+      reg_data_buf_a_2 <= wb_result_out_2;
+      reg_tgt_buf_b_1 <= stall ? reg_tgt_buf_a_1 : 0;
+      reg_tgt_buf_b_2 <= stall ? reg_tgt_buf_a_2 : 0;
+      reg_data_buf_b_1 <= reg_data_buf_a_1;
+      reg_data_buf_b_2 <= reg_data_buf_a_2;
     end
   end
 

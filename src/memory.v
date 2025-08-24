@@ -5,11 +5,13 @@ module memory(input clk, input halt,
     input [4:0]opcode_in, input [4:0]tgt_in_1, input [4:0]tgt_in_2, 
     input [31:0]result_in_1, input [31:0]result_in_2, input halt_in,
 
+    input [31:0]addr_in,
+
     input is_load, input is_store,
     
     output reg [4:0]tgt_out_1, output reg [4:0]tgt_out_2,
     output reg [31:0]result_out_1, output reg [31:0]result_out_2,
-    output reg [4:0]opcode_out,
+    output reg [4:0]opcode_out, output reg [31:0]addr_out,
     output reg bubble_out, output reg halt_out,
 
     output reg is_load_out, output reg is_store_out
@@ -31,6 +33,7 @@ module memory(input clk, input halt,
       result_out_2 <= result_in_2;
       bubble_out <= halt_out ? 1 : bubble_in;
       halt_out <= halt_in && !bubble_in;
+      addr_out <= addr_in;
 
       is_load_out <= is_load;
       is_store_out <= is_store;
