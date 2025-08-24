@@ -16,15 +16,15 @@ module ALU(input clk,
   wire [32:0]carry_sum;
   assign carry_sum = {1'b0, s_1} + {1'b0, s_2} + {32'b0, flags[0]};
 
-  wire [31:0]s_1_sub;
-  assign s_1_sub = 32'b1 + (~s_1);
-  wire [31:0]s_1_subb;
-  assign s_1_subb = 32'b1 + ~(s_1 + {31'b0, ~flags[0]});
+  wire [31:0]s_2_sub;
+  assign s_2_sub = 32'b1 + (~s_2);
+  wire [31:0]s_2_subb;
+  assign s_2_subb = 32'b1 + ~(s_2 + {31'b0, ~flags[0]});
 
   wire [32:0]diff;
-  assign diff = {1'b0, s_2} + {1'b0, s_1_sub};
+  assign diff = {1'b0, s_2_sub} + {1'b0, s_1};
   wire [32:0]carry_diff;
-  assign carry_diff = {1'b0, s_2} + {1'b0, s_1_subb};
+  assign carry_diff = {1'b0, s_2_subb} + {1'b0, s_1};
 
   assign result = (op == 5'd0 || op == 5'd1) ? (
       (alu_op == 5'd0) ? (s_1 & s_2) : // and
@@ -87,12 +87,12 @@ module ALU(input clk,
   assign s = result[31];
 
   // detect subtraction
-  wire [31:0]s_1_for_o = (alu_op == 5'd16) ? s_1_sub :
-                         (alu_op == 5'd17) ? s_1_subb :
-                         s_1;
+  wire [31:0]s_2_for_o = (alu_op == 5'd16) ? s_2_sub :
+                         (alu_op == 5'd17) ? s_2_subb :
+                         s_2;
 
   wire o;
-  assign o = (result[31] != s_1_for_o[31]) & (s_1_for_o[31] == s_2[31]);
+  assign o = (result[31] != s_2_for_o[31]) & (s_2_for_o[31] == s_1[31]);
 
   always @(posedge clk) begin
     if (!bubble) begin

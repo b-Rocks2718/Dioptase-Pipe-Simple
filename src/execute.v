@@ -79,10 +79,10 @@ module execute(input clk, input halt,
      is_load_mem && // lw can cause stalls
      !bubble_in && !mem_bubble);
 
-  wire mux_imm = (opcode == 5'd1) || (opcode == 5'd2) || (5'd3 <= opcode && opcode <= 5'd11);
-
-  wire [31:0]lhs = op1;
-  wire [31:0]rhs = mux_imm ? imm : op2;
+  // nonsense to make subtract immediate work how i want
+  wire [31:0]lhs = (opcode == 5'd1 && alu_op == 5'd16) ? imm : op1;
+  wire [31:0]rhs = (opcode == 5'd1 && alu_op != 5'd16) || (opcode == 5'd2) || (5'd3 <= opcode && opcode <= 5'd11) ? imm : 
+                   (opcode == 5'd1 && alu_op == 5'd16) ? op1 : op2;
 
   // memory stuff
   assign store_data = (5'd3 <= opcode && opcode <= 5'd5) ? op2 :
