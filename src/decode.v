@@ -47,7 +47,7 @@ module decode(input clk,
 
   // bit to distinguish loads from stores
   wire load_bit = (opcode == 5'd5 || opcode == 5'd8 || opcode == 5'd11) ? 
-                  instr_in[22] : instr_in[16];
+                  instr_in[21] : instr_in[16];
 
   wire is_mem = (5'd3 <= opcode && opcode <= 5'd11);
   wire is_branch = (5'd12 <= opcode && opcode <= 5'd14);
@@ -117,11 +117,12 @@ module decode(input clk,
         is_store_out <= is_store;
         is_branch_out <= is_branch;
         is_post_inc_out <= is_absolute_mem && increment_type == 2;
-
-        instr_buf <= mem_out_0;
       end
 
-      // TODO: think about stalls some more
+      // lol experimental programming W
+      if (!(stall && was_stall)) begin
+        instr_buf <= mem_out_0;
+      end
       was_stall <= stall;
       was_was_stall <= was_stall;
     end

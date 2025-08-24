@@ -81,19 +81,19 @@ module execute(input clk, input halt,
 
   // nonsense to make subtract immediate work how i want
   wire [31:0]lhs = (opcode == 5'd1 && alu_op == 5'd16) ? imm : op1;
-  wire [31:0]rhs = (opcode == 5'd1 && alu_op != 5'd16) || (opcode == 5'd2) || (5'd3 <= opcode && opcode <= 5'd11) ? imm : 
-                   (opcode == 5'd1 && alu_op == 5'd16) ? op1 : op2;
+  wire [31:0]rhs = ((opcode == 5'd1 && alu_op != 5'd16) || (opcode == 5'd2) || (5'd3 <= opcode && opcode <= 5'd11)) ? 
+                    imm : (opcode == 5'd1 && alu_op == 5'd16) ? op1 : op2;
 
   // memory stuff
   assign store_data = (5'd3 <= opcode && opcode <= 5'd5) ? op2 :
-                    (5'd6 <= opcode && opcode <= 5'd8) ? op2 & 32'hffff :
-                    (5'd9 <= opcode && opcode <= 5'd11) ? op2 & 32'hff :
+                    (5'd6 <= opcode && opcode <= 5'd8) ? (op2 & 32'hffff) :
+                    (5'd9 <= opcode && opcode <= 5'd11) ? (op2 & 32'hff) :
                     32'h0;
   assign we = is_store && !bubble_in && !halt_out && !halt_in_wb;
   assign addr = 
     (opcode == 5'd3 || opcode == 5'd6 || opcode == 5'd9) ? alu_rslt : // absolute mem
-    (opcode == 5'd3 || opcode == 5'd6 || opcode == 5'd9) ? alu_rslt + decode_pc_out + 32'h4: // relative mem
-    (opcode == 5'd3 || opcode == 5'd6 || opcode == 5'd9) ? alu_rslt + decode_pc_out + 32'h4: // relative immediate mem
+    (opcode == 5'd4 || opcode == 5'd7 || opcode == 5'd10) ? alu_rslt + decode_pc_out + 32'h4 : // relative mem
+    (opcode == 5'd5 || opcode == 5'd8 || opcode == 5'd11) ? alu_rslt + decode_pc_out + 32'h4 : // relative immediate mem
     32'h0;
 
   wire [31:0]alu_rslt;
@@ -104,10 +104,10 @@ module execute(input clk, input halt,
       result_1 <= (opcode == 5'd13 || opcode == 5'd14) ? decode_pc_out + 32'd4 : 
                   is_post_inc ? op2 : alu_rslt;
       result_2 <= alu_rslt;
-      tgt_out_1 <= halt_in_wb ? 5'd0 : tgt_1;
-      tgt_out_2 <= halt_in_wb ? 5'd0 : tgt_2;
+      tgt_out_1 <= (halt_in_wb || stall) ? 5'd0 : tgt_1;
+      tgt_out_2 <= (halt_in_wb || stall) ? 5'd0 : tgt_2;
       opcode_out <= opcode;
-      bubble_out <= halt_in_wb ? 1 : bubble_in;
+      bubble_out <= (halt_in_wb || stall) ? 1 : bubble_in;
       halt_out <= halt_in && !bubble_in;
 
       is_load_out <= is_load;

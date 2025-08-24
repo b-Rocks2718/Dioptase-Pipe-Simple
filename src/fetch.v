@@ -19,7 +19,7 @@ module fetch_a(input clk, input stall, input flush,
     if (!stall) begin
       pc <= branch ? branch_tgt + 4 : pc + 4; // +4 is a hack to save a cycle on branches
       bubble_out <= 0;
-      pc_out <= pc;
+      pc_out <= fetch_addr;
     end
   end
 endmodule
