@@ -112,7 +112,7 @@ module execute(input clk, input halt,
                     32'h0;
   assign we = is_store && !bubble_in && !halt_out && !halt_in_wb;
   assign addr = 
-    (opcode == 5'd3 || opcode == 5'd6 || opcode == 5'd9) ? alu_rslt : // absolute mem
+    (opcode == 5'd3 || opcode == 5'd6 || opcode == 5'd9) ? (is_post_inc ? op1 : alu_rslt) : // absolute mem
     (opcode == 5'd4 || opcode == 5'd7 || opcode == 5'd10) ? alu_rslt + decode_pc_out + 32'h4 : // relative mem
     (opcode == 5'd5 || opcode == 5'd8 || opcode == 5'd11) ? alu_rslt + decode_pc_out + 32'h4 : // relative immediate mem
     32'h0;
@@ -122,8 +122,7 @@ module execute(input clk, input halt,
 
   always @(posedge clk) begin
     if (~halt) begin
-      result_1 <= (opcode == 5'd13 || opcode == 5'd14) ? decode_pc_out + 32'd4 : 
-                  is_post_inc ? op2 : alu_rslt;
+      result_1 <= (opcode == 5'd13 || opcode == 5'd14) ? decode_pc_out + 32'd4 : alu_rslt;
       result_2 <= alu_rslt;
       tgt_out_1 <= (halt_in_wb || stall) ? 5'd0 : tgt_1;
       tgt_out_2 <= (halt_in_wb || stall) ? 5'd0 : tgt_2;
