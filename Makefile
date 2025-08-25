@@ -61,7 +61,7 @@ test: $(ASM_SRCS) $(VERILOG_SRCS) | dirs
 	NC="\033[0m"; \
 	passed=0; total=$(TOTAL); \
 	$(IVERILOG) -o sim.vvp $(wildcard $(SRC_DIR)/*.v) ; \
-	echo "Running $(words $(EMU_TESTS_SRCS)) emulator tests:"; \
+	echo "Running $(words $(EMU_TESTS_SRCS)) instruction tests:"; \
 	for t in $(basename $(notdir $(EMU_TESTS_SRCS))); do \
 	  printf "%s %-20s " '-' "$$t"; \
 	  $(ASSEMBLER) $(EMU_TESTS_DIR)/$$t.s -o $(HEX_DIR)/$$t.hex && \

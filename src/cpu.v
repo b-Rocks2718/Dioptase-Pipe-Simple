@@ -4,7 +4,7 @@ module pipelined_cpu(
   input clk,
   output [31:0]mem_read0_addr, input [31:0]mem_read0_data,
   output [31:0]mem_read1_addr, input [31:0]mem_read1_data,
-  output mem_write_en, output [31:0]mem_write_addr, output [31:0]mem_write_data,
+  output [3:0]mem_we, output [31:0]mem_write_addr, output [31:0]mem_write_data,
   output [31:0]ret_val, output [3:0]flags, output [31:0]curr_pc
 );
 
@@ -18,7 +18,6 @@ module pipelined_cpu(
     wire [31:0]fetch_addr;
     wire [31:0]mem_out_1;
 
-    wire mem_we;
     wire [31:0]exec_result_out_1;
     wire [31:0]exec_result_out_2;
     wire [31:0]addr;
@@ -39,7 +38,6 @@ module pipelined_cpu(
     assign mem_read1_addr = addr;
     assign mem_out_0 = mem_read0_data;
     assign mem_out_1 = mem_read1_data;
-    assign mem_write_en = mem_we;
     assign mem_write_addr = addr;
     assign mem_write_data = store_data;
 
@@ -109,6 +107,7 @@ module pipelined_cpu(
 
     wire exec_is_load_out;
     wire exec_is_store_out;
+    wire exec_is_misaligned_out;
     
     assign curr_pc = decode_pc_out;
     execute execute(clk, halt, decode_bubble_out, mem_halt, 
@@ -126,25 +125,26 @@ module pipelined_cpu(
       addr, store_data, mem_we, exec_addr_out,
       exec_opcode_out, exec_tgt_out_1, exec_tgt_out_2, exec_bubble_out, 
       branch, branch_tgt, exec_halt_out, flags, stall,
-      exec_is_load_out, exec_is_store_out);
+      exec_is_load_out, exec_is_store_out, exec_is_misaligned_out);
 
     wire mem_bubble_out;
     wire mem_is_load_out;
     wire mem_is_store_out;
+    wire mem_is_misaligned_out;
     wire [31:0]mem_addr_out;
 
     memory memory(clk, halt,
       exec_bubble_out, exec_opcode_out, exec_tgt_out_1, exec_tgt_out_2,
       exec_result_out_1, exec_result_out_2, exec_halt_out, exec_addr_out,
-      exec_is_load_out, exec_is_store_out,
+      exec_is_load_out, exec_is_store_out, exec_is_misaligned_out,
 
       mem_tgt_out_1, mem_tgt_out_2, 
       mem_result_out_1, mem_result_out_2,
       mem_opcode_out, mem_addr_out, mem_bubble_out, mem_halt,
-      mem_is_load_out, mem_is_store_out);
+      mem_is_load_out, mem_is_store_out, mem_is_misaligned_out);
 
     writeback writeback(clk, halt, mem_bubble_out, mem_tgt_out_1, mem_tgt_out_2,
-      mem_is_load_out, mem_is_store_out,
+      mem_is_load_out, mem_is_store_out, mem_is_misaligned_out,
       mem_opcode_out,
       mem_result_out_1, mem_result_out_2, mem_out_1, mem_addr_out,
       reg_write_data_1, reg_write_data_2,

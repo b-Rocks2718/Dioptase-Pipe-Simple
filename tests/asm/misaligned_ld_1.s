@@ -1,6 +1,5 @@
-# not implemented yet
   movi r2, 0x1000
-  lda r3, [r2, 3]
+  lda r3, [r2, 1]
   sys EXIT
 
   .origin 0x1000

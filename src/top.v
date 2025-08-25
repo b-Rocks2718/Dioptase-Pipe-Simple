@@ -1,6 +1,6 @@
 `timescale 1ps/1ps
 
-module jpeb();
+module dioptase();
 
     reg reset = 0;
     wire clk;
@@ -12,7 +12,7 @@ module jpeb();
       end else begin
         $dumpfile("cpu.vcd");
       end
-      $dumpvars(0, jpeb);
+      $dumpvars(0, dioptase);
     end
 
     clock c0(clk);
@@ -22,7 +22,7 @@ module jpeb();
     wire [31:0]mem_read0_data;
     wire [31:0]mem_read1_addr;
     wire [31:0]mem_read1_data;
-    wire mem_write_en;
+    wire [3:0]mem_write_en;
     wire [31:0]mem_write_addr;
     wire [31:0]mem_write_data;
 
