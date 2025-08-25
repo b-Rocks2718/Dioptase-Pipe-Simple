@@ -22,8 +22,10 @@ module regfile(input clk,
         regfile[waddr1] <= wdata1;
     end
 
-    rdata0 <= (raddr0 == 0) ? 32'b0 : regfile[raddr0];
-    rdata1 <= (raddr1 == 0) ? 32'b0 : regfile[raddr1];
+    if (!stall) begin
+      rdata0 <= (raddr0 == 0) ? 32'b0 : regfile[raddr0];
+      rdata1 <= (raddr1 == 0) ? 32'b0 : regfile[raddr1];
+    end
 
   end
 

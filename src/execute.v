@@ -119,20 +119,55 @@ module execute(input clk, input halt,
                     imm : (opcode == 5'd1 && alu_op == 5'd16) ? op1 : op2;
 
   // memory stuff
-  assign store_data = (5'd3 <= opcode && opcode <= 5'd5) ? op2 :
-                    (5'd6 <= opcode && opcode <= 5'd8) ? (op2 & 32'hffff) :
-                    (5'd9 <= opcode && opcode <= 5'd11) ? (op2 & 32'hff) :
-                    32'h0;
+  assign store_data = 
+    is_mem_w ? (
+      was_misaligned ? (
+        (!addr_buf[1] && !addr_buf[0]) ? 32'h0 :
+        (!addr_buf[1] && addr_buf[0]) ? (op2 >> 24) :
+        (addr_buf[1] && !addr_buf[0]) ? (op2 >> 16) :
+        (addr_buf[1] && addr_buf[0]) ? (op2 >> 8) :
+        32'h0
+      ) : (
+        (!addr[1] && !addr[0]) ? op2 :
+        (!addr[1] && addr[0]) ? (op2 << 8) :
+        (addr[1] && !addr[0]) ? (op2 << 16) :
+        (addr[1] && addr[0]) ? (op2 << 24) :
+        32'h0
+      )
+    ) :
+    is_mem_d ? (
+      was_misaligned ? (
+        (!addr_buf[1] && !addr_buf[0]) ? 32'h0 :
+        (!addr_buf[1] && addr_buf[0]) ? 32'h0 :
+        (addr_buf[1] && !addr_buf[0]) ? 32'h0 :
+        (addr_buf[1] && addr_buf[0]) ? ((op2 & 32'hffff) >> 8) :
+        32'h0
+      ) : (
+        (!addr[1] && !addr[0]) ? (op2 & 32'hffff) :
+        (!addr[1] && addr[0]) ? ((op2 & 32'hffff) << 8) :
+        (addr[1] && !addr[0]) ? ((op2 & 32'hffff) << 16) :
+        (addr[1] && addr[0]) ? ((op2 & 32'hffff) << 24) :
+        32'h0
+      )
+    ) :
+    is_mem_b ? (
+      (!addr[1] && !addr[0]) ? (op2 & 32'hff) :
+      (!addr[1] && addr[0]) ? ((op2 & 32'hff) << 8) :
+      (addr[1] && !addr[0]) ? ((op2 & 32'hff) << 16) :
+      (addr[1] && addr[0]) ? ((op2 & 32'hff) << 24) :
+      32'h0
+    ) :
+    32'h0;
 
-  wire we_bit = is_store && !bubble_in && !halt_out && !halt_in_wb && !stall;
+  wire we_bit = is_store && !bubble_in && !halt_out && !halt_in_wb && (!stall || is_misaligned);
 
   assign we = 
     is_mem_w ? (
       was_misaligned ? (
         (!addr_buf[1] && !addr_buf[0]) ? 4'b0 :
-        (!addr_buf[1] && addr_buf[0]) ? {1'b0, {3{we_bit}}} :
+        (!addr_buf[1] && addr_buf[0]) ? {3'b0, we_bit} :
         (addr_buf[1] && !addr_buf[0]) ? {2'b0, {2{we_bit}}} :
-        (addr_buf[1] && addr_buf[0]) ? {3'b0, we_bit} :
+        (addr_buf[1] && addr_buf[0]) ? {1'b0, {3{we_bit}}} :
         4'h0
       ) : (
         (!addr[1] && !addr[0]) ? {4{we_bit}} :
@@ -194,6 +229,7 @@ module execute(input clk, input halt,
       is_load_out <= is_load;
       is_store_out <= is_store;
 
+      if (stall) begin
       reg_tgt_buf_a_1 <= stall ? wb_tgt_1 : 0;
       reg_tgt_buf_a_2 <= stall ? wb_tgt_2 : 0;
       reg_data_buf_a_1 <= wb_result_out_1;
@@ -202,6 +238,7 @@ module execute(input clk, input halt,
       reg_tgt_buf_b_2 <= stall ? reg_tgt_buf_a_2 : 0;
       reg_data_buf_b_1 <= reg_data_buf_a_1;
       reg_data_buf_b_2 <= reg_data_buf_a_2;
+      end
     end
   end
 

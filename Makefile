@@ -27,6 +27,8 @@ TOTAL            := $(words $(ASM_SRCS))
 
 .PRECIOUS: %.hex %.vout %.emuout %.vcd
 
+all: sim.vvp
+
 # Compile Verilog into sim.vvp once
 sim.vvp: $(wildcard $(SRC_DIR)/*.v)
 	$(IVERILOG) -o sim.vvp $^
@@ -37,6 +39,7 @@ $(OUT_DIR)/%.vcd: $(HEX_DIR)/%.hex sim.vvp | dirs
 # Ensure OUT_DIR exists
 dirs:
 	@mkdir -p $(OUT_DIR)
+	@mkdir -p $(HEX_DIR)
 
 # Rules to produce .hex files in HEX_DIR
 $(HEX_DIR)/%.hex: $(CPU_TESTS_DIR)/%.s $(ASSEMBLER) | dirs
