@@ -111,7 +111,7 @@ module decode(input clk,
         alu_op_out <= alu_op;
         bubble_out <= flush ? 1 : bubble_in;
         pc_out <= pc_in;
-        halt_out <= (opcode == 5'b01111) && (instr_in[6:0] == 7'b0) && !bubble_in;
+        halt_out <= (opcode == 5'b01111) && (instr_in[6:0] == 7'b1) && !bubble_in;
 
         is_load_out <= is_load;
         is_store_out <= is_store;
