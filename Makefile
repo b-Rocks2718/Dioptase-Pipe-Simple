@@ -11,6 +11,10 @@ EMULATOR     := ../../Dioptase-Emulators/Dioptase-Emulator-Simple/target/release
 IVERILOG     := iverilog
 VVP          := vvp
 
+# Simulation limits
+CYCLE_LIMIT  ?= 10000
+EMULATOR_ARGS ?= --max-cycles=$(CYCLE_LIMIT)
+
 # All test sources
 VERILOG_SRCS   := $(wildcard $(SRC_DIR)/*.v)
 
@@ -34,7 +38,7 @@ sim.vvp: $(wildcard $(SRC_DIR)/*.v)
 	$(IVERILOG) -o sim.vvp $^
 
 $(OUT_DIR)/%.vcd: $(HEX_DIR)/%.hex sim.vvp | dirs
-	$(VVP) sim.vvp +hex=$< +vcd=$@
+	$(VVP) sim.vvp +hex=$< +vcd=$@ +cycle_limit=$(CYCLE_LIMIT)
 
 # Ensure OUT_DIR exists
 dirs:
@@ -50,11 +54,11 @@ $(HEX_DIR)/%.hex: $(EMU_TESTS_DIR)/%.s $(ASSEMBLER) | dirs
 
 # Run Verilog simulator (vvp) -> .vout
 $(OUT_DIR)/%.vout: $(HEX_DIR)/%.hex sim.vvp | dirs
-	$(VVP) sim.vvp +hex=$< > $@
+	$(VVP) sim.vvp +hex=$< +cycle_limit=$(CYCLE_LIMIT) > $@
 
 # Run Emulator -> .emuout
 $(OUT_DIR)/%.emuout: $(HEX_DIR)/%.hex $(EMULATOR) | dirs
-	$(EMULATOR) $< > $@
+	$(EMULATOR) $(EMULATOR_ARGS) $< > $@
 
 # Main test target
 test: $(ASM_SRCS) $(VERILOG_SRCS) | dirs
@@ -68,8 +72,8 @@ test: $(ASM_SRCS) $(VERILOG_SRCS) | dirs
 	for t in $(basename $(notdir $(EMU_TESTS_SRCS))); do \
 	  printf "%s %-20s " '-' "$$t"; \
 	  $(ASSEMBLER) $(EMU_TESTS_DIR)/$$t.s -o $(HEX_DIR)/$$t.hex && \
-	  $(EMULATOR) $(HEX_DIR)/$$t.hex > $(OUT_DIR)/$$t.emuout && \
-	  $(VVP) sim.vvp +hex=$(HEX_DIR)/$$t.hex +vcd=$(OUT_DIR)/$$t.vcd 2>/dev/null \
+	  $(EMULATOR) $(EMULATOR_ARGS) $(HEX_DIR)/$$t.hex > $(OUT_DIR)/$$t.emuout && \
+	  $(VVP) sim.vvp +hex=$(HEX_DIR)/$$t.hex +vcd=$(OUT_DIR)/$$t.vcd +cycle_limit=$(CYCLE_LIMIT) 2>/dev/null \
   		| grep -v "VCD info:" > $(OUT_DIR)/$$t.vout ; \
 	  if cmp --silent $(OUT_DIR)/$$t.emuout $(OUT_DIR)/$$t.vout; then \
 	    echo "$$GREEN PASS $$NC"; passed=$$((passed+1)); \
@@ -82,8 +86,8 @@ test: $(ASM_SRCS) $(VERILOG_SRCS) | dirs
 	for t in $(basename $(notdir $(CPU_TESTS_SRCS))); do \
 	  printf "%s %-20s " '-' "$$t"; \
 	  $(ASSEMBLER) $(CPU_TESTS_DIR)/$$t.s -o $(HEX_DIR)/$$t.hex -nostart && \
-	  $(EMULATOR) $(HEX_DIR)/$$t.hex > $(OUT_DIR)/$$t.emuout && \
-	  $(VVP) sim.vvp +hex=$(HEX_DIR)/$$t.hex +vcd=$(OUT_DIR)/$$t.vcd 2>/dev/null \
+	  $(EMULATOR) $(EMULATOR_ARGS) $(HEX_DIR)/$$t.hex > $(OUT_DIR)/$$t.emuout && \
+	  $(VVP) sim.vvp +hex=$(HEX_DIR)/$$t.hex +vcd=$(OUT_DIR)/$$t.vcd +cycle_limit=$(CYCLE_LIMIT) 2>/dev/null \
   		| grep -v "VCD info:" > $(OUT_DIR)/$$t.vout ; \
 	  if cmp --silent $(OUT_DIR)/$$t.emuout $(OUT_DIR)/$$t.vout; then \
 	    echo "$$GREEN PASS $$NC"; passed=$$((passed+1)); \
