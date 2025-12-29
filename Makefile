@@ -6,7 +6,7 @@ HEX_DIR					 := tests/hex
 OUT_DIR      		 := tests/out
 
 # Tools
-ASSEMBLER    := ../../Dioptase-Assembler/build/assembler
+ASSEMBLER    := ../../Dioptase-Assembler/build/basm
 EMULATOR     := ../../Dioptase-Emulators/Dioptase-Emulator-Simple/target/release/Dioptase-Emulator-Simple
 IVERILOG     := iverilog
 VVP          := vvp
