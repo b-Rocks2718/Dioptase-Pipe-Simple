@@ -7,14 +7,14 @@ module memory(input clk, input halt,
 
     input [31:0]addr_in,
 
-    input is_load, input is_store, input is_misaligned,
+    input is_load, input is_store,
     
     output reg [4:0]tgt_out_1, output reg [4:0]tgt_out_2,
     output reg [31:0]result_out_1, output reg [31:0]result_out_2,
     output reg [4:0]opcode_out, output reg [31:0]addr_out,
     output reg bubble_out, output reg halt_out,
 
-    output reg is_load_out, output reg is_store_out, output reg is_misaligned_out
+    output reg is_load_out, output reg is_store_out
   );
 
   initial begin
@@ -37,7 +37,6 @@ module memory(input clk, input halt,
 
       is_load_out <= is_load;
       is_store_out <= is_store;
-      is_misaligned_out <= is_misaligned;
     end
   end
 

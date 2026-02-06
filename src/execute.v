@@ -29,7 +29,7 @@ module execute(input clk, input halt,
 
     output stall, 
 
-    output reg is_load_out, output reg is_store_out, output reg was_misaligned
+    output reg is_load_out, output reg is_store_out
   );
 
   initial begin
@@ -87,11 +87,6 @@ module execute(input clk, input halt,
   reg [31:0]addr_buf;
   reg [31:0]data_buf;
 
-  wire is_misaligned = ( 
-    (is_mem_d && addr[1] && addr[0]) ||
-    (is_mem_w && (addr[1] || addr[0]))
-  ) && !bubble_in && !was_misaligned;
-
   assign stall = 
    // dependencies on a lw can cause stalls
    ((((tgt_out_1 == s_1 ||
@@ -109,9 +104,7 @@ module execute(input clk, input halt,
      mem_tgt_2 == s_2) &&
      mem_tgt_2 != 5'd0)) &&
      is_load_mem &&
-     !bubble_in && !mem_bubble) ||
-    // misaligned memory can cause stalls
-    is_misaligned;
+     !bubble_in && !mem_bubble);
 
   // nonsense to make subtract immediate work how i want
   wire [31:0]lhs = (opcode == 5'd1 && alu_op == 5'd16) ? imm : op1;
@@ -119,89 +112,17 @@ module execute(input clk, input halt,
                     imm : (opcode == 5'd1 && alu_op == 5'd16) ? op1 : op2;
 
   // memory stuff
-  assign store_data = 
-    is_mem_w ? (
-      was_misaligned ? (
-        (!addr_buf[1] && !addr_buf[0]) ? 32'h0 :
-        (!addr_buf[1] && addr_buf[0]) ? (op2 >> 24) :
-        (addr_buf[1] && !addr_buf[0]) ? (op2 >> 16) :
-        (addr_buf[1] && addr_buf[0]) ? (op2 >> 8) :
-        32'h0
-      ) : (
-        (!addr[1] && !addr[0]) ? op2 :
-        (!addr[1] && addr[0]) ? (op2 << 8) :
-        (addr[1] && !addr[0]) ? (op2 << 16) :
-        (addr[1] && addr[0]) ? (op2 << 24) :
-        32'h0
-      )
-    ) :
-    is_mem_d ? (
-      was_misaligned ? (
-        (!addr_buf[1] && !addr_buf[0]) ? 32'h0 :
-        (!addr_buf[1] && addr_buf[0]) ? 32'h0 :
-        (addr_buf[1] && !addr_buf[0]) ? 32'h0 :
-        (addr_buf[1] && addr_buf[0]) ? ((op2 & 32'hffff) >> 8) :
-        32'h0
-      ) : (
-        (!addr[1] && !addr[0]) ? (op2 & 32'hffff) :
-        (!addr[1] && addr[0]) ? ((op2 & 32'hffff) << 8) :
-        (addr[1] && !addr[0]) ? ((op2 & 32'hffff) << 16) :
-        (addr[1] && addr[0]) ? ((op2 & 32'hffff) << 24) :
-        32'h0
-      )
-    ) :
-    is_mem_b ? (
-      (!addr[1] && !addr[0]) ? (op2 & 32'hff) :
-      (!addr[1] && addr[0]) ? ((op2 & 32'hff) << 8) :
-      (addr[1] && !addr[0]) ? ((op2 & 32'hff) << 16) :
-      (addr[1] && addr[0]) ? ((op2 & 32'hff) << 24) :
-      32'h0
-    ) :
-    32'h0;
+  assign store_data = op2;
 
-  wire we_bit = is_store && !bubble_in && !halt_out && !halt_in_wb && (!stall || is_misaligned);
+  wire we_bit = is_store && !bubble_in && !halt_out && !halt_in_wb && !stall;
 
   assign we = 
-    is_mem_w ? (
-      was_misaligned ? (
-        (!addr_buf[1] && !addr_buf[0]) ? 4'b0 :
-        (!addr_buf[1] && addr_buf[0]) ? {3'b0, we_bit} :
-        (addr_buf[1] && !addr_buf[0]) ? {2'b0, {2{we_bit}}} :
-        (addr_buf[1] && addr_buf[0]) ? {1'b0, {3{we_bit}}} :
-        4'h0
-      ) : (
-        (!addr[1] && !addr[0]) ? {4{we_bit}} :
-        (!addr[1] && addr[0]) ? {{3{we_bit}}, 1'b0} :
-        (addr[1] && !addr[0]) ? {{2{we_bit}}, 2'b0} :
-        (addr[1] && addr[0]) ? {we_bit, 3'b0} :
-        4'h0
-      )
-    ) : 
-    is_mem_d ? (
-      was_misaligned ? (
-        (!addr_buf[1] && !addr_buf[0]) ? 4'b0 :
-        (!addr_buf[1] && addr_buf[0]) ? 4'b0 :
-        (addr_buf[1] && !addr_buf[0]) ? 4'b0 :
-        (addr_buf[1] && addr_buf[0]) ? {3'b0, we_bit} :
-        4'h0
-      ) : (
-        (!addr[1] && !addr[0]) ? {2'b0, {2{we_bit}}} :
-        (!addr[1] && addr[0]) ? {1'b0, {2{we_bit}}, 1'b0} :
-        (addr[1] && !addr[0]) ? {{2{we_bit}}, 2'b0} :
-        (addr[1] && addr[0]) ? {we_bit, 3'b0} :
-        4'h0
-      )
-    ) :
-    is_mem_b ? (
-      (!addr[1] && !addr[0]) ? {3'b0, we_bit} :
-      (!addr[1] && addr[0]) ? {2'b0, we_bit, 1'b0} :
-      (addr[1] && !addr[0]) ? {1'b0, we_bit, 2'b0} :
-      (addr[1] && addr[0]) ? {we_bit, 3'b0} :
-      4'h0
-    ) :
+    is_mem_w ? {4{we_bit}} : 
+    is_mem_d ? {2'b0, {2{we_bit}}} :
+    is_mem_b ? {3'b0, we_bit}:
     4'h0;
 
-  assign addr = was_misaligned ? addr_buf : 
+  assign addr =
     (opcode == 5'd3 || opcode == 5'd6 || opcode == 5'd9) ? (is_post_inc ? op1 : alu_rslt) : // absolute mem
     (opcode == 5'd4 || opcode == 5'd7 || opcode == 5'd10) ? alu_rslt + decode_pc_out + 32'h4 : // relative mem
     (opcode == 5'd5 || opcode == 5'd8 || opcode == 5'd11) ? alu_rslt + decode_pc_out + 32'h4 : // relative immediate mem
@@ -217,12 +138,11 @@ module execute(input clk, input halt,
       tgt_out_1 <= (halt_in_wb || stall) ? 5'd0 : tgt_1;
       tgt_out_2 <= (halt_in_wb || stall) ? 5'd0 : tgt_2;
       opcode_out <= opcode;
-      bubble_out <= (halt_in_wb || (stall && !is_misaligned)) ? 1 : bubble_in;
+      bubble_out <= (halt_in_wb || stall) ? 1 : bubble_in;
       halt_out <= halt_in && !bubble_in;
 
       addr_out <= addr;
       
-      was_misaligned <= is_misaligned;
       addr_buf <= addr + 32'h4;
       data_buf <= store_data;
 
