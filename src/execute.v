@@ -108,7 +108,8 @@ module execute(input clk, input halt,
 
   // nonsense to make subtract immediate work how i want
   wire [31:0]lhs = (opcode == 5'd1 && alu_op == 5'd16) ? imm : op1;
-  wire [31:0]rhs = ((opcode == 5'd1 && alu_op != 5'd16) || (opcode == 5'd2) || (5'd3 <= opcode && opcode <= 5'd11)) ? 
+  wire [31:0]rhs = ((opcode == 5'd1 && alu_op != 5'd16) || (opcode == 5'd2) || 
+                    (5'd3 <= opcode && opcode <= 5'd11) || (opcode == 5'd22)) ? 
                     imm : (opcode == 5'd1 && alu_op == 5'd16) ? op1 : op2;
 
   // memory stuff
@@ -129,7 +130,7 @@ module execute(input clk, input halt,
     32'h0;
 
   wire [31:0]alu_rslt;
-  ALU ALU(clk, opcode, alu_op, lhs, rhs, bubble_in, alu_rslt, flags);
+  ALU ALU(clk, opcode, alu_op, lhs, rhs, decode_pc_out, bubble_in, alu_rslt, flags);
 
   always @(posedge clk) begin
     if (~halt) begin

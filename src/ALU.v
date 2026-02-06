@@ -2,7 +2,7 @@
 
 module ALU(input clk,
     input [4:0]op, input [4:0]alu_op, input [31:0]s_1, input [31:0]s_2, 
-    input bubble,
+    input [31:0]pc, input bubble,
     output [31:0]result, output reg [3:0]flags);
 
   // flags: O | S | Z | C
@@ -45,12 +45,19 @@ module ALU(input clk,
       (alu_op == 5'd15) ? carry_sum[31:0] : // addc
       (alu_op == 5'd16) ? diff[31:0]  : // sub
       (alu_op == 5'd17) ? carry_diff[31:0] : // subb
+      (op == 5'd0) ? (
+        (alu_op == 5'd18) ? {{24{s_2[7]}}, s_2[7:0]} : // sxtb
+        (alu_op == 5'd19) ? {{16{s_2[15]}}, s_2[15:0]} : // sxtd
+        (alu_op == 5'd20) ? {{24{1'b0}}, s_2[7:0]} : // tncb
+        (alu_op == 5'd21) ? {{16{1'b0}}, s_2[15:0]} : // tncd
+        0 ) :
       0) :
     (op == 5'd2) ? s_2 : // lui
     (5'd3 <= op && op <= 5'd11) ? (s_1 + s_2) : // memory
     (op == 5'd12) ? 0 : // branch
     (op == 5'd13 || op == 5'd14) ? s_1 : // branch and link
     (op == 5'd15) ? 0 : // syscall
+    (op == 5'd22) ? pc + 32'h4 + s_2 : // adpc
     0;
 
   // carry flag

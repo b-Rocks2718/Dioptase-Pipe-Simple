@@ -88,6 +88,7 @@ module decode(input clk,
     is_absolute_mem ? { {20{instr_in[11]}}, instr_in[11:0] } << mem_shift : // sign extend 12 bit with shift
     (opcode == 5'd4 || opcode == 5'd7 || opcode == 5'd10) ? { {16{instr_in[15]}}, instr_in[15:0] } : // sign extend 16 bit 
     (opcode == 5'd5 || opcode == 5'd8 || opcode == 5'd11) ? { {11{instr_in[20]}}, instr_in[20:0] } : // sign extend 21 bit 
+    (opcode == 5'd22) ? { {10{instr_in[21]}}, instr_in[21:0] } : // sign extend 22 bit
     32'd0;
 
   initial begin
