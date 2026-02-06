@@ -8,8 +8,24 @@ module regfile(input clk,
     input stall, output [31:0]ret_val);
 
   reg [31:0]regfile[0:5'b11111];
+  integer i;
 
-  // compiler puts return value in r3
+  // Keep the reset stack pointer inside mem.v's 64K-word RAM window:
+  // 65536 words * 4 bytes = 0x0004_0000 bytes total, so choose a high
+  // in-range address (with headroom for small negative offsets).
+  localparam [31:0]RAM_BYTES = 32'h0004_0000;
+  localparam [31:0]STACK_PTR_RESET = RAM_BYTES - 32'h10;
+
+  initial begin
+    for (i = 0; i < 32; i = i + 1) begin
+      regfile[i] = 32'b0; // initialize registers to 0
+    end
+    regfile[5'd31] = STACK_PTR_RESET;
+    rdata0 = 32'b0;
+    rdata1 = 32'b0;
+  end
+
+  // compiler puts return value in r1
   // expose it here to allow for testing
   assign ret_val = regfile[5'd1];
 

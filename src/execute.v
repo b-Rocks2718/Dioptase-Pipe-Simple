@@ -267,7 +267,7 @@ module execute(input clk, input halt,
   assign branch = !bubble_in && !halt_in_wb && taken && is_branch;
   
   assign branch_tgt = 
-            (opcode == 5'd12) ? decode_pc_out + imm + 32'h4 :
+            (opcode == 5'd12) ? decode_pc_out + (imm << 2) + 32'h4 :
             (opcode == 5'd13) ? op1 :
             (opcode == 5'd14) ? decode_pc_out + op1 + 32'h4 : 
             decode_pc_out + 32'h4;

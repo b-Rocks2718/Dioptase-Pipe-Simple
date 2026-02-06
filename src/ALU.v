@@ -45,7 +45,6 @@ module ALU(input clk,
       (alu_op == 5'd15) ? carry_sum[31:0] : // addc
       (alu_op == 5'd16) ? diff[31:0]  : // sub
       (alu_op == 5'd17) ? carry_diff[31:0] : // subb
-      (alu_op == 5'd18) ? (s_1 * s_2) : // mul
       0) :
     (op == 5'd2) ? s_2 : // lui
     (5'd3 <= op && op <= 5'd11) ? (s_1 + s_2) : // memory
