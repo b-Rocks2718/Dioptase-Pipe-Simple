@@ -59,19 +59,20 @@ module pipelined_cpu(
     assign mem_write_addr = addr;
     assign mem_write_data = store_data;
 
-    wire stall;
+    wire decode_stall;
+    wire exec_stall;
     wire [31:0]branch_tgt;
     wire [31:0]decode_pc_out;
     wire [31:0]fetch_a_pc_out;
     wire fetch_a_bubble_out;
 
-    fetch_a fetch_a(clk, stall | halt, flush, branch, branch_tgt,
+    fetch_a fetch_a(clk, decode_stall | exec_stall | halt, flush, branch, branch_tgt,
       fetch_addr, fetch_a_pc_out, fetch_a_bubble_out);
 
     wire fetch_b_bubble_out;
     wire [31:0]fetch_b_pc_out;
 
-    fetch_b fetch_b(clk, stall | halt, flush, fetch_a_bubble_out, fetch_a_pc_out,
+    fetch_b fetch_b(clk, decode_stall | exec_stall | halt, flush, fetch_a_bubble_out, fetch_a_pc_out,
       fetch_b_bubble_out, fetch_b_pc_out);
 
     wire [31:0] decode_op1_out;
@@ -97,6 +98,9 @@ module pipelined_cpu(
     wire decode_is_store_out;
     wire decode_is_branch_out;
     wire decode_is_post_inc_out;
+    wire decode_is_atomic_out;
+    wire decode_is_fetch_add_atomic_out;
+    wire [1:0]decode_atomic_step_out;
 
     // Decode stage: instruction field extraction, immediate generation, and
     // source register read with dual writeback ports.
@@ -104,14 +108,15 @@ module pipelined_cpu(
       mem_out_0, fetch_b_bubble_out, fetch_b_pc_out,
       reg_we_1, mem_b_tgt_out_1, reg_write_data_1,
       reg_we_2, mem_b_tgt_out_2, reg_write_data_2,
-      stall,
+      exec_stall,
       decode_op1_out, decode_op2_out, decode_pc_out,
       decode_opcode_out, decode_s_1_out, decode_s_2_out, 
       decode_tgt_out_1, decode_tgt_out_2,
       decode_alu_op_out, decode_imm_out, decode_branch_code_out,
       decode_bubble_out, decode_halt_out, ret_val,
       decode_is_load_out, decode_is_store_out, decode_is_branch_out,
-      decode_is_post_inc_out);
+      decode_is_post_inc_out, decode_stall,
+      decode_is_atomic_out, decode_is_fetch_add_atomic_out, decode_atomic_step_out);
 
     wire exec_bubble_out;
     wire [31:0]mem_a_result_out_1;
@@ -155,11 +160,12 @@ module pipelined_cpu(
       decode_is_load_out, decode_is_store_out, decode_is_branch_out, 
       mem_a_bubble_out, mem_a_is_load_out, mem_b_bubble_out, mem_b_is_load_out,
       decode_is_post_inc_out,
+      decode_is_atomic_out, decode_is_fetch_add_atomic_out, decode_atomic_step_out,
 
       exec_result_out_1, exec_result_out_2, 
       addr, store_data, mem_we,
       exec_opcode_out, exec_tgt_out_1, exec_tgt_out_2, exec_bubble_out, 
-      branch, branch_tgt, exec_halt_out, flags, stall,
+      branch, branch_tgt, exec_halt_out, flags, exec_stall,
       exec_is_load_out, exec_is_store_out);
 
     wire mem_a_is_store_out;

@@ -5,7 +5,7 @@
 // Properties:
 // - 32 architectural registers with two read ports and two write ports.
 // - Read side enforces r0 == 0.
-// - Write port 0 has priority over write port 1 on same destination.
+// - Write port 1 has priority over write port 0 on same destination.
 // - `ret_val` exposes r1 for testbench termination reporting.
 module regfile(input clk,
     input [4:0]raddr0, output reg [31:0]rdata0,
@@ -40,8 +40,10 @@ module regfile(input clk,
     if (wen0) begin
         regfile[waddr0] <= wdata0;
     end
-    if (wen1 && waddr0 != waddr1) begin
-        // 2nd write port is used by pre/post-increment base writeback.
+    if (wen1) begin
+        // Port 1 is used by pre/post-increment base writeback. If both
+        // ports target the same register, port 1 wins to match emulator
+        // ordering (mem op destination write then base writeback).
         regfile[waddr1] <= wdata1;
     end
 
