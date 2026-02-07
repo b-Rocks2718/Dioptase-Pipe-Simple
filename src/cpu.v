@@ -30,8 +30,9 @@ module pipelined_cpu(
 
     wire branch;
     wire flush;
-    wire mem_halt;
-    assign flush = branch || mem_halt;
+    wire mem_a_halt;
+    wire mem_b_halt;
+    assign flush = branch || mem_b_halt;
 
     reg mem_ren = 1;
     assign mem_read0_addr = fetch_addr;
@@ -70,8 +71,10 @@ module pipelined_cpu(
     
     wire decode_bubble_out;
     wire decode_halt_out;
-    wire [4:0]mem_tgt_out_1;
-    wire [4:0]mem_tgt_out_2;
+    wire [4:0]mem_a_tgt_out_1;
+    wire [4:0]mem_a_tgt_out_2;
+    wire [4:0]mem_b_tgt_out_1;
+    wire [4:0]mem_b_tgt_out_2;
 
     wire decode_is_load_out;
     wire decode_is_store_out;
@@ -80,8 +83,8 @@ module pipelined_cpu(
 
     decode decode(clk, flush, halt,
       mem_out_0, fetch_b_bubble_out, fetch_b_pc_out,
-      reg_we_1, mem_tgt_out_1, reg_write_data_1,
-      reg_we_2, mem_tgt_out_2, reg_write_data_2,
+      reg_we_1, mem_b_tgt_out_1, reg_write_data_1,
+      reg_we_2, mem_b_tgt_out_2, reg_write_data_2,
       stall,
       decode_op1_out, decode_op2_out, decode_pc_out,
       decode_opcode_out, decode_s_1_out, decode_s_2_out, 
@@ -92,8 +95,10 @@ module pipelined_cpu(
       decode_is_post_inc_out);
 
     wire exec_bubble_out;
-    wire [31:0]mem_result_out_1;
-    wire [31:0]mem_result_out_2;
+    wire [31:0]mem_a_result_out_1;
+    wire [31:0]mem_a_result_out_2;
+    wire [31:0]mem_b_result_out_1;
+    wire [31:0]mem_b_result_out_2;
     wire [4:0]exec_opcode_out;
     wire [4:0]exec_tgt_out_1;
     wire [4:0]exec_tgt_out_2;
@@ -102,55 +107,77 @@ module pipelined_cpu(
     wire [4:0]wb_tgt_out_2;
     wire [31:0]wb_result_out_1;
     wire [31:0]wb_result_out_2;
-    wire [4:0]mem_opcode_out;
-    wire [31:0]exec_addr_out;
+    wire [4:0]mem_a_opcode_out;
+    wire [4:0]mem_b_opcode_out;
 
     wire exec_is_load_out;
     wire exec_is_store_out;
+
+    wire mem_a_bubble_out;
+    wire mem_b_bubble_out;
+    wire mem_a_is_load_out;
+    wire mem_b_is_load_out;
     
     assign curr_pc = decode_pc_out;
-    execute execute(clk, halt, decode_bubble_out, mem_halt, 
+    execute execute(clk, halt, decode_bubble_out, mem_b_halt, 
       decode_opcode_out, decode_s_1_out, decode_s_2_out, 
       decode_tgt_out_1, decode_tgt_out_2,
       decode_alu_op_out, decode_imm_out, decode_branch_code_out,
-      mem_tgt_out_1, mem_tgt_out_2, wb_tgt_out_1, wb_tgt_out_2,
+      mem_a_tgt_out_1, mem_a_tgt_out_2,
+      mem_b_tgt_out_1, mem_b_tgt_out_2, 
+      wb_tgt_out_1, wb_tgt_out_2,
       decode_op1_out, decode_op2_out, 
-      mem_result_out_1, mem_result_out_2, wb_result_out_1, wb_result_out_2, decode_pc_out,
-      decode_halt_out, mem_opcode_out,
-      decode_is_load_out, decode_is_store_out, decode_is_branch_out, mem_bubble_out, mem_is_load_out,
+      mem_a_result_out_1, mem_a_result_out_2,
+      mem_b_result_out_1, mem_b_result_out_2, 
+      wb_result_out_1, wb_result_out_2, 
+      decode_pc_out, decode_halt_out, mem_b_opcode_out,
+      decode_is_load_out, decode_is_store_out, decode_is_branch_out, 
+      mem_a_bubble_out, mem_a_is_load_out, mem_b_bubble_out, mem_b_is_load_out,
       decode_is_post_inc_out,
 
       exec_result_out_1, exec_result_out_2, 
-      addr, store_data, mem_we, exec_addr_out,
+      addr, store_data, mem_we,
       exec_opcode_out, exec_tgt_out_1, exec_tgt_out_2, exec_bubble_out, 
       branch, branch_tgt, exec_halt_out, flags, stall,
       exec_is_load_out, exec_is_store_out);
 
-    wire mem_bubble_out;
-    wire mem_is_load_out;
-    wire mem_is_store_out;
-    wire [31:0]mem_addr_out;
+    wire mem_a_is_store_out;
+    wire [31:0]mem_a_addr_out;
 
-    memory memory(clk, halt,
+    wire mem_b_is_store_out;
+    wire [31:0]mem_b_addr_out;
+
+    memory memory_a(clk, halt,
       exec_bubble_out, exec_opcode_out, exec_tgt_out_1, exec_tgt_out_2,
-      exec_result_out_1, exec_result_out_2, exec_halt_out, exec_addr_out,
+      exec_result_out_1, exec_result_out_2, exec_halt_out, addr,
       exec_is_load_out, exec_is_store_out,
 
-      mem_tgt_out_1, mem_tgt_out_2, 
-      mem_result_out_1, mem_result_out_2,
-      mem_opcode_out, mem_addr_out, mem_bubble_out, mem_halt,
-      mem_is_load_out, mem_is_store_out);
+      mem_a_tgt_out_1, mem_a_tgt_out_2, 
+      mem_a_result_out_1, mem_a_result_out_2,
+      mem_a_opcode_out, mem_a_addr_out, mem_a_bubble_out, mem_a_halt,
+      mem_a_is_load_out, mem_a_is_store_out);
 
-    writeback writeback(clk, halt, mem_bubble_out, mem_tgt_out_1, mem_tgt_out_2,
-      mem_is_load_out, mem_is_store_out,
-      mem_opcode_out,
-      mem_result_out_1, mem_result_out_2, mem_out_1, mem_addr_out,
+
+    memory memory_b(clk, halt,
+      mem_a_bubble_out, mem_a_opcode_out, mem_a_tgt_out_1, mem_a_tgt_out_2,
+      mem_a_result_out_1, mem_a_result_out_2, mem_a_halt, mem_a_addr_out,
+      mem_a_is_load_out, mem_a_is_store_out,
+
+      mem_b_tgt_out_1, mem_b_tgt_out_2, 
+      mem_b_result_out_1, mem_b_result_out_2,
+      mem_b_opcode_out, mem_b_addr_out, mem_b_bubble_out, mem_b_halt,
+      mem_b_is_load_out, mem_b_is_store_out);
+
+    writeback writeback(clk, halt, mem_b_bubble_out, mem_b_tgt_out_1, mem_b_tgt_out_2,
+      mem_b_is_load_out, mem_b_is_store_out,
+      mem_b_opcode_out,
+      mem_b_result_out_1, mem_b_result_out_2, mem_out_1, mem_b_addr_out,
       reg_write_data_1, reg_write_data_2,
       reg_we_1, wb_tgt_out_1, wb_result_out_1,
       reg_we_2, wb_tgt_out_2, wb_result_out_2);
 
     always @(posedge clk) begin
-      halt <= halt ? 1 : mem_halt;
+      halt <= halt ? 1 : mem_b_halt;
     end
 
 endmodule

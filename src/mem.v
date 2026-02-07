@@ -19,30 +19,6 @@ module mem(input clk,
         $readmemh(hexfile, ram);  // mem is your instruction/data memory
     end
 
-//module mem32 (
-//    input  wire        clk,
-//    input  wire        we,        // overall write enable
-//    input  wire [3:0]  be,        // byte enables (1 bit per byte)
-//    input  wire [31:0] wdata,     // write data
-//    input  wire [7:0]  addr,      // word address (not byte address)
-//    output reg  [31:0] rdata
-//);
-//
-//    reg [31:0] mem [0:255]; // 256 words of 32-bit
-//
-//    always @(posedge clk) begin
-//        if (we) begin
-//            if (be[0]) mem[addr][7:0]   <= wdata[7:0];
-//            if (be[1]) mem[addr][15:8]  <= wdata[15:8];
-//            if (be[2]) mem[addr][23:16] <= wdata[23:16];
-//            if (be[3]) mem[addr][31:24] <= wdata[31:24];
-//        end
-//        rdata <= mem[addr];
-//    end
-//
-//endmodule
-
-
     reg wen_buf;
 
     reg [31:0]data0_out;

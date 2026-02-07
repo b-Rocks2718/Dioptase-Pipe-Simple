@@ -1,6 +1,6 @@
 # Directories
 CPU_TESTS_DIR    := tests/asm
-EMU_TESTS_DIR    := ../../Dioptase-Emulators/Dioptase-Emulator-Simple/tests/asm
+EMU_TESTS_DIR    := emu_tests/asm
 SRC_DIR      		 := src
 HEX_DIR					 := tests/hex
 OUT_DIR      		 := tests/out
@@ -9,6 +9,7 @@ OUT_DIR      		 := tests/out
 ASSEMBLER    := ../../Dioptase-Assembler/build/debug/basm
 EMULATOR     := ../../Dioptase-Emulators/Dioptase-Emulator-Simple/target/release/Dioptase-Emulator-Simple
 IVERILOG     := iverilog
+IVERILOG_FLAGS := -Wall
 VVP          := vvp
 
 # Simulation limits
@@ -42,7 +43,7 @@ all: sim.vvp
 
 # Compile Verilog into sim.vvp once
 sim.vvp: $(wildcard $(SRC_DIR)/*.v)
-	$(IVERILOG) -o sim.vvp $^
+	$(IVERILOG) $(IVERILOG_FLAGS) -o sim.vvp $^
 
 $(OUT_DIR)/%.vcd: $(HEX_DIR)/%.hex sim.vvp | dirs
 	$(VVP) sim.vvp +hex=$< +vcd=$@ +cycle_limit=$(CYCLE_LIMIT)
@@ -72,7 +73,7 @@ test: $(ASM_SRCS) $(VERILOG_SRCS) | dirs
 	YELLOW="\033[0;33m"; \
 	NC="\033[0m"; \
 	passed=0; total=$(TOTAL); \
-	$(IVERILOG) -o sim.vvp $(wildcard $(SRC_DIR)/*.v) ; \
+	$(IVERILOG) $(IVERILOG_FLAGS) -o sim.vvp $(wildcard $(SRC_DIR)/*.v) ; \
 	echo "Running $(words $(EMU_TESTS_RUN_SRCS)) instruction tests:"; \
 	for t in $(basename $(notdir $(EMU_TESTS_RUN_SRCS))); do \
 	  printf "%s %-20s " '-' "$$t"; \

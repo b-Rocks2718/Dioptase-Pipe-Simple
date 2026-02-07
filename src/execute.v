@@ -5,22 +5,25 @@ module execute(input clk, input halt,
     input [4:0]opcode, input [4:0]s_1, input [4:0]s_2, input [4:0]tgt_1, input [4:0]tgt_2, input [4:0]alu_op,
     input [31:0]imm, input [4:0]branch_code,
     
-    input [4:0]mem_tgt_1, input [4:0]mem_tgt_2, 
+    input [4:0]mem_a_tgt_1, input [4:0]mem_a_tgt_2,
+    input [4:0]mem_b_tgt_1, input [4:0]mem_b_tgt_2, 
     input [4:0]wb_tgt_1, input [4:0]wb_tgt_2,
     
     input [31:0]reg_out_1, input [31:0]reg_out_2,
 
-    input [31:0]mem_result_out_1, input [31:0]mem_result_out_2,
+    input [31:0]mem_a_result_out_1, input [31:0]mem_a_result_out_2,
+    input [31:0]mem_b_result_out_1, input [31:0]mem_b_result_out_2,
     input [31:0]wb_result_out_1, input [31:0]wb_result_out_2, 
     
     input [31:0]decode_pc_out, input halt_in,
     input [4:0]mem_opcode_out,
 
-    input is_load, input is_store, input is_branch, input mem_bubble, input is_load_mem,
+    input is_load, input is_store, input is_branch, 
+    input mem_a_bubble, input mem_a_is_load, input mem_b_bubble, input mem_b_is_load,
     input is_post_inc,
     
     output reg [31:0]result_1, output reg [31:0]result_2,
-    output [31:0]addr, output [31:0]store_data, output [3:0]we, output reg [31:0]addr_out,
+    output reg [31:0]addr, output reg [31:0]store_data, output reg [3:0]we,
     output reg [4:0]opcode_out, output reg [4:0]tgt_out_1, output reg [4:0]tgt_out_2,
     
     output reg bubble_out,
@@ -58,11 +61,14 @@ module execute(input clk, input halt,
   wire is_mem_d = (5'd6 <= opcode && opcode <= 5'd8);
   wire is_mem_b = (5'd9 <= opcode && opcode <= 5'd11);
 
+  // forwarding logic
   assign op1 = 
     (tgt_out_1 == s_1 && s_1 != 5'b0) ? result_1 :
     (tgt_out_2 == s_1 && s_1 != 5'b0) ? result_2 :
-    (mem_tgt_1 == s_1 && s_1 != 5'b0) ? mem_result_out_1 : 
-    (mem_tgt_2 == s_1 && s_1 != 5'b0) ? mem_result_out_2 : 
+    (mem_a_tgt_1 == s_1 && s_1 != 5'b0) ? mem_a_result_out_1 : 
+    (mem_a_tgt_2 == s_1 && s_1 != 5'b0) ? mem_a_result_out_2 : 
+    (mem_b_tgt_1 == s_1 && s_1 != 5'b0) ? mem_b_result_out_1 : 
+    (mem_b_tgt_2 == s_1 && s_1 != 5'b0) ? mem_b_result_out_2 : 
     (wb_tgt_1 == s_1 && s_1 != 5'b0) ? wb_result_out_1 :
     (wb_tgt_2 == s_1 && s_1 != 5'b0) ? wb_result_out_2 :
     (reg_tgt_buf_a_1 == s_1 && s_1 != 5'b0) ? reg_data_buf_a_1 :
@@ -74,8 +80,10 @@ module execute(input clk, input halt,
   assign op2 = 
     (tgt_out_1 == s_2 && s_2 != 5'b0) ? result_1 :
     (tgt_out_2 == s_2 && s_2 != 5'b0) ? result_2 :
-    (mem_tgt_1 == s_2 && s_2 != 5'b0) ? mem_result_out_1 : 
-    (mem_tgt_2 == s_2 && s_2 != 5'b0) ? mem_result_out_2 : 
+    (mem_a_tgt_1 == s_2 && s_2 != 5'b0) ? mem_a_result_out_1 : 
+    (mem_a_tgt_2 == s_2 && s_2 != 5'b0) ? mem_a_result_out_2 : 
+    (mem_b_tgt_1 == s_2 && s_2 != 5'b0) ? mem_b_result_out_1 : 
+    (mem_b_tgt_2 == s_2 && s_2 != 5'b0) ? mem_b_result_out_2 : 
     (wb_tgt_1 == s_2 && s_2 != 5'b0) ? wb_result_out_1 :
     (wb_tgt_2 == s_2 && s_2 != 5'b0) ? wb_result_out_2 :
     (reg_tgt_buf_a_1 == s_2 && s_2 != 5'b0) ? reg_data_buf_a_1 :
@@ -83,9 +91,6 @@ module execute(input clk, input halt,
     (reg_tgt_buf_b_1 == s_2 && s_2 != 5'b0) ? reg_data_buf_b_1 :
     (reg_tgt_buf_b_2 == s_2 && s_2 != 5'b0) ? reg_data_buf_b_2 :
     reg_out_2;
-
-  reg [31:0]addr_buf;
-  reg [31:0]data_buf;
 
   assign stall = 
    // dependencies on a lw can cause stalls
@@ -97,14 +102,22 @@ module execute(input clk, input halt,
      tgt_out_2 != 5'd0)) &&
      is_load_out && 
      !bubble_in && !bubble_out) ||
-  ((((mem_tgt_1 == s_1 ||
-     mem_tgt_1 == s_2) &&
-     mem_tgt_1 != 5'd0) || 
-     ((mem_tgt_2 == s_1 ||
-     mem_tgt_2 == s_2) &&
-     mem_tgt_2 != 5'd0)) &&
-     is_load_mem &&
-     !bubble_in && !mem_bubble);
+  ((((mem_a_tgt_1 == s_1 ||
+     mem_a_tgt_1 == s_2) &&
+     mem_a_tgt_1 != 5'd0) || 
+     ((mem_a_tgt_2 == s_1 ||
+     mem_a_tgt_2 == s_2) &&
+     mem_a_tgt_2 != 5'd0)) &&
+     mem_a_is_load &&
+     !bubble_in && !mem_a_bubble) ||
+  ((((mem_b_tgt_1 == s_1 ||
+     mem_b_tgt_1 == s_2) &&
+     mem_b_tgt_1 != 5'd0) || 
+     ((mem_b_tgt_2 == s_1 ||
+     mem_b_tgt_2 == s_2) &&
+     mem_b_tgt_2 != 5'd0)) &&
+     mem_b_is_load &&
+     !bubble_in && !mem_b_bubble);
 
   // nonsense to make subtract immediate work how i want
   wire [31:0]lhs = (opcode == 5'd1 && alu_op == 5'd16) ? imm : op1;
@@ -113,21 +126,8 @@ module execute(input clk, input halt,
                     imm : (opcode == 5'd1 && alu_op == 5'd16) ? op1 : op2;
 
   // memory stuff
-  assign store_data = op2;
 
   wire we_bit = is_store && !bubble_in && !halt_out && !halt_in_wb && !stall;
-
-  assign we = 
-    is_mem_w ? {4{we_bit}} : 
-    is_mem_d ? {2'b0, {2{we_bit}}} :
-    is_mem_b ? {3'b0, we_bit}:
-    4'h0;
-
-  assign addr =
-    (opcode == 5'd3 || opcode == 5'd6 || opcode == 5'd9) ? (is_post_inc ? op1 : alu_rslt) : // absolute mem
-    (opcode == 5'd4 || opcode == 5'd7 || opcode == 5'd10) ? alu_rslt + decode_pc_out + 32'h4 : // relative mem
-    (opcode == 5'd5 || opcode == 5'd8 || opcode == 5'd11) ? alu_rslt + decode_pc_out + 32'h4 : // relative immediate mem
-    32'h0;
 
   wire [31:0]alu_rslt;
   ALU ALU(clk, opcode, alu_op, lhs, rhs, decode_pc_out, bubble_in, alu_rslt, flags);
@@ -142,23 +142,29 @@ module execute(input clk, input halt,
       bubble_out <= (halt_in_wb || stall) ? 1 : bubble_in;
       halt_out <= halt_in && !bubble_in;
 
-      addr_out <= addr;
-      
-      addr_buf <= addr + 32'h4;
-      data_buf <= store_data;
+      addr <= (opcode == 5'd3 || opcode == 5'd6 || opcode == 5'd9) ? (is_post_inc ? op1 : alu_rslt) : // absolute mem
+        (opcode == 5'd4 || opcode == 5'd7 || opcode == 5'd10) ? alu_rslt + decode_pc_out + 32'h4 : // relative mem
+        (opcode == 5'd5 || opcode == 5'd8 || opcode == 5'd11) ? alu_rslt + decode_pc_out + 32'h4 : // relative immediate mem
+        32'h0;
+      store_data <= op2;
+      we <= 
+        is_mem_w ? {4{we_bit}} : 
+        is_mem_d ? {2'b0, {2{we_bit}}} :
+        is_mem_b ? {3'b0, we_bit}:
+        4'h0;
 
       is_load_out <= is_load;
       is_store_out <= is_store;
 
       if (stall) begin
-      reg_tgt_buf_a_1 <= stall ? wb_tgt_1 : 0;
-      reg_tgt_buf_a_2 <= stall ? wb_tgt_2 : 0;
-      reg_data_buf_a_1 <= wb_result_out_1;
-      reg_data_buf_a_2 <= wb_result_out_2;
-      reg_tgt_buf_b_1 <= stall ? reg_tgt_buf_a_1 : 0;
-      reg_tgt_buf_b_2 <= stall ? reg_tgt_buf_a_2 : 0;
-      reg_data_buf_b_1 <= reg_data_buf_a_1;
-      reg_data_buf_b_2 <= reg_data_buf_a_2;
+        reg_tgt_buf_a_1 <= stall ? wb_tgt_1 : 0;
+        reg_tgt_buf_a_2 <= stall ? wb_tgt_2 : 0;
+        reg_data_buf_a_1 <= wb_result_out_1;
+        reg_data_buf_a_2 <= wb_result_out_2;
+        reg_tgt_buf_b_1 <= stall ? reg_tgt_buf_a_1 : 0;
+        reg_tgt_buf_b_2 <= stall ? reg_tgt_buf_a_2 : 0;
+        reg_data_buf_b_1 <= reg_data_buf_a_1;
+        reg_data_buf_b_2 <= reg_data_buf_a_2;
       end
     end
   end
