@@ -1,5 +1,17 @@
 `timescale 1ps/1ps
 
+// Decode stage.
+//
+// Purpose:
+// - Parse instruction fields from fetch.
+// - Generate immediates and per-op control bits.
+// - Read source operands from regfile.
+// - Register decode outputs into the execute boundary.
+//
+// Stall behavior:
+// - Instruction memory is pipelined, so decode keeps a local `instr_buf`.
+// - During back-to-back stalls, decode reuses buffered instruction bytes to
+//   keep control/data aligned with the held pipeline slot.
 module decode(input clk,
     input flush, input halt,
 
@@ -28,7 +40,7 @@ module decode(input clk,
 
   wire [4:0]opcode = instr_in[31:27];
 
-  // branch instruction has r_a and r_b in a different spot than normal
+  // Branch-and-link register forms encode rA/rB in low bits.
   wire [4:0]r_a = (opcode == 5'd13 || opcode == 5'd14) ? instr_in[9:5] : instr_in[26:22];
   wire [4:0]r_b = (opcode == 5'd13 || opcode == 5'd14) ? instr_in[4:0] : instr_in[21:17];
   
@@ -60,10 +72,10 @@ module decode(input clk,
 
   wire [1:0]mem_shift = instr_in[13:12];
 
-  // possibility of making two writes to regfile (pre/postincremnt)
+  // Absolute memory opcodes can write both destination and updated base.
   wire is_absolute_mem = opcode == 5'd3 || opcode == 5'd6 || opcode == 5'd9;
 
-  // some instructions don't read from r_b
+  // Select source slot 1 register. Many opcodes use implicit zero for src1.
   wire [4:0]s_1 = (opcode == 5'd2 || opcode == 5'd5 || opcode == 5'd8
                 || opcode == 5'd11 || opcode == 5'd12 || opcode == 5'd15 ||
                 ((opcode == 5'd0 || opcode == 5'd1) && alu_op == 5'd6)) ? 5'd0 : r_b;
@@ -79,6 +91,7 @@ module decode(input clk,
         we2, target_2, write_data_2,
         stall, ret_val);
 
+  // ISA immediate decode. Width/sign/shift depend on opcode family.
   wire [31:0]imm = 
     (opcode == 5'd1 && is_bitwise) ? { 24'b0, instr_in[7:0] } << alu_shift : // zero extend, then shift
     (opcode == 5'd1 && is_shift) ? { 27'b0, instr_in[4:0] } : // zero extend 5 bit
@@ -120,7 +133,7 @@ module decode(input clk,
         is_post_inc_out <= is_absolute_mem && increment_type == 2;
       end
 
-      // lol experimental programming W
+      // Keep a copy of instruction memory output for multi-cycle stalls.
       if (!(stall && was_stall)) begin
         instr_buf <= mem_out_0;
       end

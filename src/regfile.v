@@ -1,5 +1,12 @@
 `timescale 1ps/1ps
 
+// Integer register file.
+//
+// Properties:
+// - 32 architectural registers with two read ports and two write ports.
+// - Read side enforces r0 == 0.
+// - Write port 0 has priority over write port 1 on same destination.
+// - `ret_val` exposes r1 for testbench termination reporting.
 module regfile(input clk,
     input [4:0]raddr0, output reg [31:0]rdata0,
     input [4:0]raddr1, output reg [31:0]rdata1,
@@ -33,8 +40,8 @@ module regfile(input clk,
     if (wen0) begin
         regfile[waddr0] <= wdata0;
     end
-    if (wen1 && waddr0 != waddr1) begin // load data takes precedence over address
-        // 2nd write port used for pre/post increment memory operations
+    if (wen1 && waddr0 != waddr1) begin
+        // 2nd write port is used by pre/post-increment base writeback.
         regfile[waddr1] <= wdata1;
     end
 

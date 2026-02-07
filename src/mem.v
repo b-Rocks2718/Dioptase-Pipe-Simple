@@ -1,5 +1,12 @@
 `timescale 1ps/1ps
 
+// Simulation memory model.
+//
+// Model:
+// - 64K words of 32-bit RAM (word addressed internally via addr[15:2]).
+// - Two read ports and one byte-write-enabled write port.
+// - Read latency is two cycles due to output pipelining (`data*_out` then
+//   `rdata*`), matching this pipeline's fetch/data timing assumptions.
 module mem(input clk,
     input [31:0]raddr0, output reg [31:0]rdata0,
     input [31:0]raddr1, output reg [31:0]rdata1,
@@ -19,14 +26,10 @@ module mem(input clk,
         $readmemh(hexfile, ram);  // mem is your instruction/data memory
     end
 
-    reg wen_buf;
-
     reg [31:0]data0_out;
     reg [31:0]data1_out;
 
     always @(posedge clk) begin
-
-      wen_buf <= wen;
 
       data0_out <= ram[raddr0[15:2]];
       data1_out <= ram[raddr1[15:2]];

@@ -1,5 +1,9 @@
 `timescale 1ps/1ps
 
+// Testbench top.
+//
+// Wires the pipelined CPU to the simulation memory model and enables VCD
+// dumping. This module is for simulation harnessing (not SoC integration).
 module dioptase();
 
     reg reset = 0;

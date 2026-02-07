@@ -1,5 +1,21 @@
 `timescale 1ps/1ps
 
+// Top-level 7-stage pipeline wrapper.
+//
+// Stages:
+//   1) fetch_a
+//   2) fetch_b
+//   3) decode
+//   4) execute
+//   5) memory_a
+//   6) memory_b
+//   7) writeback
+//
+// Invariants:
+// - All stage-to-stage data/control transfer is edge-registered.
+// - `flush` kills younger instructions on taken branch or halt.
+// - External memory port 1 (`mem_read1_addr`) is driven by execute's
+//   registered address output, so load data aligns with downstream MEM/WB.
 module pipelined_cpu(
   input clk,
   output [31:0]mem_read0_addr, input [31:0]mem_read0_data,
@@ -12,7 +28,7 @@ module pipelined_cpu(
 
     counter ctr(halt, clk, ret_val);
 
-    // read from memory
+    // Instruction fetch path and data memory return path.
     wire [31:0]fetch_instr_out;
     wire [31:0]mem_out_0;
     wire [31:0]fetch_addr;
@@ -34,6 +50,7 @@ module pipelined_cpu(
     wire mem_b_halt;
     assign flush = branch || mem_b_halt;
 
+    // External memory interface bindings.
     reg mem_ren = 1;
     assign mem_read0_addr = fetch_addr;
     assign mem_read1_addr = addr;
@@ -81,6 +98,8 @@ module pipelined_cpu(
     wire decode_is_branch_out;
     wire decode_is_post_inc_out;
 
+    // Decode stage: instruction field extraction, immediate generation, and
+    // source register read with dual writeback ports.
     decode decode(clk, flush, halt,
       mem_out_0, fetch_b_bubble_out, fetch_b_pc_out,
       reg_we_1, mem_b_tgt_out_1, reg_write_data_1,
@@ -119,6 +138,8 @@ module pipelined_cpu(
     wire mem_b_is_load_out;
     
     assign curr_pc = decode_pc_out;
+    // Execute stage: forwarding, hazard detection, ALU, branch resolve, and
+    // registered memory request generation.
     execute execute(clk, halt, decode_bubble_out, mem_b_halt, 
       decode_opcode_out, decode_s_1_out, decode_s_2_out, 
       decode_tgt_out_1, decode_tgt_out_2,
@@ -147,6 +168,8 @@ module pipelined_cpu(
     wire mem_b_is_store_out;
     wire [31:0]mem_b_addr_out;
 
+    // Two MEM pipeline registers are used to align memory latency and to keep
+    // writeback timing deterministic.
     memory memory_a(clk, halt,
       exec_bubble_out, exec_opcode_out, exec_tgt_out_1, exec_tgt_out_2,
       exec_result_out_1, exec_result_out_2, exec_halt_out, addr,
@@ -168,6 +191,7 @@ module pipelined_cpu(
       mem_b_opcode_out, mem_b_addr_out, mem_b_bubble_out, mem_b_halt,
       mem_b_is_load_out, mem_b_is_store_out);
 
+    // Writeback stage: load lane selection/masking and final regfile enables.
     writeback writeback(clk, halt, mem_b_bubble_out, mem_b_tgt_out_1, mem_b_tgt_out_2,
       mem_b_is_load_out, mem_b_is_store_out,
       mem_b_opcode_out,

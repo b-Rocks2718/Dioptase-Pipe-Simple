@@ -1,5 +1,15 @@
 `timescale 1ps/1ps
 
+// Writeback stage.
+//
+// Purpose:
+// - Select register write enables/targets for this retiring slot.
+// - For loads, extract the addressed lane(s) from 32-bit memory read data.
+// - For non-loads, forward ALU results.
+//
+// Assumption:
+// - Memory read port returns a 32-bit aligned word, so subword loads are
+//   selected by `addr[1:0]`.
 module writeback(input clk, input halt, input bubble_in, 
     input [4:0]tgt_in_1, input [4:0]tgt_in_2, 
     input is_load, input is_store,
@@ -20,18 +30,12 @@ module writeback(input clk, input halt, input bubble_in,
     wb_tgt_out_2 = 5'd0;
   end
 
-  reg [31:0]mem_result_buf;
-  reg [31:0]addr_buf;
-
   always @(posedge clk) begin
     if (~halt) begin
       wb_tgt_out_1 <= tgt_in_1;
       wb_tgt_out_2 <= tgt_in_2;
       wb_result_out_1 <= result_out_1;
       wb_result_out_2 <= result_out_2;
-
-      mem_result_buf <= mem_result;
-      addr_buf <= addr;
     end
   end
 

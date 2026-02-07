@@ -1,5 +1,9 @@
 `timescale 1ps/1ps
 
+// Simulation termination helper.
+//
+// - Stops simulation and prints `ret_val` when CPU halts.
+// - Optionally enforces `+cycle_limit=<N>` timeout to prevent runaway tests.
 module counter(input isHalt, input clk, input [31:0]ret_val);
 
     reg [31:0] count = 0;

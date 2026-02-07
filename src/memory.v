@@ -1,5 +1,11 @@
 `timescale 1ps/1ps
 
+// Generic MEM pipeline register stage.
+//
+// Purpose:
+// - Register execute outputs between EX and WB.
+// - Carry opcode/target/address/load-store metadata forward unchanged.
+// - Propagate bubble/halt state with the same cycle alignment.
 module memory(input clk, input halt,
     input bubble_in,
     input [4:0]opcode_in, input [4:0]tgt_in_1, input [4:0]tgt_in_2, 

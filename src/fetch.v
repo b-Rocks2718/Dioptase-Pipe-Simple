@@ -1,5 +1,13 @@
 `timescale 1ps/1ps
 
+// Fetch stage A:
+// - owns architectural PC
+// - issues instruction memory address every cycle (unless stalled)
+// - redirects on taken branch
+//
+// Invariant:
+// - `fetch_addr` presents the address associated with `pc_out` for the slot
+//   entering fetch_b.
 module fetch_a(input clk, input stall, input flush,
     input branch, input [31:0]branch_tgt,
     output [31:0]fetch_addr, output reg [31:0]pc_out, output reg bubble_out
@@ -7,7 +15,8 @@ module fetch_a(input clk, input stall, input flush,
 
   reg [31:0]pc = 32'h00000000;
 
-  // -4 is a hack to save a cycle on branches
+  // During stall, keep issuing previous fetch address so downstream bubbles
+  // remain aligned with memory latency.
   assign fetch_addr = branch ? branch_tgt : (stall ? pc - 32'h4 : pc);
 
   initial begin
@@ -17,7 +26,8 @@ module fetch_a(input clk, input stall, input flush,
 
   always @(posedge clk) begin
     if (!stall) begin
-      pc <= branch ? branch_tgt + 4 : pc + 4; // +4 is a hack to save a cycle on branches
+      // PC tracks "next sequential" after the currently issued address.
+      pc <= branch ? branch_tgt + 4 : pc + 4;
       bubble_out <= 0;
       pc_out <= fetch_addr;
     end
@@ -29,8 +39,8 @@ module fetch_b(input clk, input stall, input flush, input bubble_in,
     output reg bubble_out, output reg [31:0]pc_out
   );
 
-    // fetch is 2 stages because memory is 2-cycle
-    // pipelining allows us to average fetching 1 instruction every cycle
+    // Fetch stage B aligns fetch PC/bubble with the second cycle of
+    // instruction memory latency.
 
     initial begin
       bubble_out = 1;
